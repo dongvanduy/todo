@@ -11,6 +11,8 @@ class TaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isCompleted = task.isCompleted == 1;
+    final Color baseColor = _getBGCLR(task.color);
     return Container(
       padding: EdgeInsets.symmetric(
           horizontal: getProportionateScreenWidth(
@@ -19,85 +21,110 @@ class TaskTile extends StatelessWidget {
           ? SizeConfig.screenWidth / 2
           : SizeConfig.screenWidth,
       margin: EdgeInsets.only(bottom: getProportionateScreenHeight(12)),
-      child: Container(
-        padding: const EdgeInsets.all(12.0),
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            color: _getBGCLR(task.color)),
-        child: Row(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      task.title!,
-                      style: GoogleFonts.lato(
-                          textStyle: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      )),
-                    ),
-                    const SizedBox(
-                      height: 12,
-                    ),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.access_time_rounded,
-                          color: Colors.grey[200],
-                          size: 18,
-                        ),
-                        const SizedBox(
-                          width: 12,
-                        ),
-                        Text(
-                          '${task.startTime} - ${task.endTime}',
-                          style: GoogleFonts.lato(
-                              textStyle: TextStyle(
-                            color: Colors.grey[100],
-                            fontSize: 10,
-                          )),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(
-                      height: 12,
-                    ),
-                    Text(
-                      task.note!,
-                      style: GoogleFonts.lato(
-                          textStyle: TextStyle(
-                        color: Colors.grey[100],
-                        fontSize: 15,
-                      )),
-                    ),
-                  ],
+      child: Opacity(
+        opacity: isCompleted ? 0.5 : 1,
+        child: Container(
+          padding: const EdgeInsets.all(12.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            gradient: LinearGradient(
+              colors: [
+                baseColor.withOpacity(0.8),
+                baseColor.withOpacity(0.64),
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+                color: Colors.black.withOpacity(0.05),
+              )
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        task.title!,
+                        style: GoogleFonts.lexend(
+                            textStyle: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          decoration:
+                              isCompleted ? TextDecoration.lineThrough : null,
+                        )),
+                      ),
+                      const SizedBox(
+                        height: 12,
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            color: Colors.grey[200],
+                            size: 18,
+                          ),
+                          const SizedBox(
+                            width: 12,
+                          ),
+                          Text(
+                            '${task.startTime} - ${task.endTime}',
+                            style: GoogleFonts.lexend(
+                                textStyle: TextStyle(
+                              color: Colors.grey[100],
+                              fontSize: 10,
+                              decoration: isCompleted
+                                  ? TextDecoration.lineThrough
+                                  : null,
+                            )),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(
+                        height: 12,
+                      ),
+                      Text(
+                        task.note!,
+                        style: GoogleFonts.lexend(
+                            textStyle: TextStyle(
+                          color: Colors.grey[100],
+                          fontSize: 15,
+                          decoration:
+                              isCompleted ? TextDecoration.lineThrough : null,
+                        )),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 10),
-              height: 60,
-              width: 0.5,
-              color: Colors.grey[200]!.withOpacity(0.7),
-            ),
-            RotatedBox(
-              quarterTurns: 3,
-              child: Text(
-                task.isCompleted == 0 ? 'TODO' : 'Completed',
-                style: GoogleFonts.lato(
-                    textStyle: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                )),
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 10),
+                height: 60,
+                width: 0.5,
+                color: Colors.grey[200]!.withOpacity(0.7),
               ),
-            )
-          ],
+              RotatedBox(
+                quarterTurns: 3,
+                child: Text(
+                  task.isCompleted == 0 ? 'TODO' : 'Completed',
+                  style: GoogleFonts.lexend(
+                      textStyle: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  )),
+                ),
+              )
+            ],
+          ),
         ),
       ),
     );
