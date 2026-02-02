@@ -1,5 +1,6 @@
 import 'package:date_picker_timeline/date_picker_timeline.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
@@ -369,10 +370,7 @@ class _HomePageState extends State<HomePage> {
                 child: SlideAnimation(
                   horizontalOffset: 300,
                   child: FadeInAnimation(
-                    child: GestureDetector(
-                      onTap: () => _showBottomSheet(context, task),
-                      child: TaskTile(task),
-                    ),
+                    child: _buildDismissibleTaskTile(task),
                   ),
                 ),
               );
@@ -413,6 +411,67 @@ class _HomePageState extends State<HomePage> {
     notifyHelper.scheduleTaskNotifications(task);
   }
 
+  Widget _buildDismissibleTaskTile(Task task) {
+    var hapticTriggered = false;
+    return Dismissible(
+      key: ValueKey(
+          'task-${task.id ?? task.title}-${task.startTime}-${task.date}'),
+      direction: DismissDirection.horizontal,
+      background: _buildSwipeBackground(
+        alignment: Alignment.centerLeft,
+        icon: Icons.check_circle,
+        color: Colors.green.shade100,
+        iconColor: Colors.green.shade700,
+      ),
+      secondaryBackground: _buildSwipeBackground(
+        alignment: Alignment.centerRight,
+        icon: Icons.delete_outline,
+        color: Colors.red.shade100,
+        iconColor: Colors.red.shade700,
+      ),
+      onUpdate: (details) {
+        if (!hapticTriggered && details.progress >= 0.35) {
+          hapticTriggered = true;
+          HapticFeedback.mediumImpact();
+        }
+        if (hapticTriggered && details.progress < 0.2) {
+          hapticTriggered = false;
+        }
+      },
+      onDismissed: (direction) {
+        if (direction == DismissDirection.startToEnd) {
+          if (task.id != null) {
+            _taskController.markTaskAsCompleted(task.id!);
+          }
+        } else {
+          _taskController.deleteTasks(task);
+        }
+      },
+      child: GestureDetector(
+        onTap: () => _showBottomSheet(context, task),
+        child: TaskTile(task),
+      ),
+    );
+  }
+
+  Widget _buildSwipeBackground({
+    required Alignment alignment,
+    required IconData icon,
+    required Color color,
+    required Color iconColor,
+  }) {
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      color: color,
+      child: Icon(
+        icon,
+        color: iconColor,
+        size: 28,
+      ),
+    );
+  }
+
   Widget _showAllTasksTimeline() {
     return Obx(() {
       final tasks = [..._taskController.taskList];
@@ -438,10 +497,7 @@ class _HomePageState extends State<HomePage> {
               child: SlideAnimation(
                 horizontalOffset: 300,
                 child: FadeInAnimation(
-                  child: GestureDetector(
-                    onTap: () => _showBottomSheet(context, task),
-                    child: TaskTile(task),
-                  ),
+                  child: _buildDismissibleTaskTile(task),
                 ),
               ),
             );
