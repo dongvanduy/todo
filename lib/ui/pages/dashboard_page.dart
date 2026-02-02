@@ -1,8 +1,5 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:task_todo/models/task.dart';
 import 'package:task_todo/ui/theme.dart';
 
@@ -17,21 +14,16 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-enum _StatsRange { week, month }
-
 class _DashboardPageState extends State<DashboardPage> {
-  _StatsRange _range = _StatsRange.week;
-
   @override
   Widget build(BuildContext context) {
     return Obx(() {
       final tasks = widget.taskController.taskList.toList();
       final completed = tasks.where((task) => task.isCompleted == 1).length;
       final pending = tasks.where((task) => task.isCompleted != 1).length;
-      final overdue = tasks.where(_isOverdue).length;
-      final buckets = _range == _StatsRange.week
-          ? _weeklyBuckets(tasks)
-          : _monthlyBuckets(tasks);
+      final progress = tasks.isEmpty ? 0.0 : completed / tasks.length;
+      final highPriorityTasks =
+          tasks.where(_isHighPriority).toList(growable: false);
 
       return RefreshIndicator(
         onRefresh: widget.taskController.getTasks,
@@ -43,15 +35,13 @@ class _DashboardPageState extends State<DashboardPage> {
             children: [
               Text('dashboard_overview'.tr, style: headingStyle),
               const SizedBox(height: 12),
-              _SummaryGrid(
-                completed: completed,
-                pending: pending,
-                overdue: overdue,
-              ),
-              const SizedBox(height: 24),
-              _buildRangeSelector(),
+              _HeroProgressCard(progress: progress),
+              const SizedBox(height: 16),
+              _StatCardRow(pending: pending, completed: completed),
+              const SizedBox(height: 20),
+              Text('Priority Focus', style: titleStyle),
               const SizedBox(height: 12),
-              _ProgressChart(buckets: buckets),
+              _PriorityList(tasks: highPriorityTasks),
               if (tasks.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 12),
@@ -67,235 +57,75 @@ class _DashboardPageState extends State<DashboardPage> {
     });
   }
 
-  Widget _buildRangeSelector() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          _range == _StatsRange.week
-              ? 'dashboard_performance_week'.tr
-              : 'dashboard_performance_month'.tr,
-          style: titleStyle,
-        ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            ChoiceChip(
-              label: Text('dashboard_week'.tr),
-              selected: _range == _StatsRange.week,
-              onSelected: (_) => setState(() => _range = _StatsRange.week),
-            ),
-            ChoiceChip(
-              label: Text('dashboard_month'.tr),
-              selected: _range == _StatsRange.month,
-              onSelected: (_) => setState(() => _range = _StatsRange.month),
-            ),
-          ],
-        )
-      ],
-    );
+  bool _isHighPriority(Task task) {
+    final note = task.note?.toLowerCase() ?? '';
+    final title = task.title?.toLowerCase() ?? '';
+    return note.contains('high priority') || title.contains('high priority');
   }
-
-  bool _isOverdue(Task task) {
-    if (task.isCompleted == 1 || task.date == null) return false;
-    try {
-      final taskDate = DateFormat.yMd().parse(task.date!);
-      final today = _asDate(DateTime.now());
-      return taskDate.isBefore(today);
-    } catch (_) {
-      return false;
-    }
-  }
-
-  List<_ChartBucket> _weeklyBuckets(List<Task> tasks) {
-    final now = DateTime.now();
-    final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final isVietnamese = (Get.locale?.languageCode ?? 'en') == 'vi';
-    final labels = isVietnamese
-        ? ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
-        : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-    return List.generate(7, (index) {
-      final day = _asDate(startOfWeek.add(Duration(days: index)));
-      final completed = tasks
-          .where((task) => task.isCompleted == 1 && _occursOn(task, day))
-          .length;
-      final pending = tasks
-          .where((task) => task.isCompleted != 1 && _occursOn(task, day))
-          .length;
-      return _ChartBucket(labels[index], completed, pending);
-    });
-  }
-
-  List<_ChartBucket> _monthlyBuckets(List<Task> tasks) {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0);
-    final totalDays = endOfMonth.day;
-    final weekLabel = 'dashboard_week'.tr;
-    final buckets =
-        List.generate(5, (index) => _ChartBucket('$weekLabel ${index + 1}', 0, 0));
-
-    for (int day = 0; day < totalDays; day++) {
-      final date = _asDate(startOfMonth.add(Duration(days: day)));
-      final bucketIndex = min(day ~/ 7, buckets.length - 1);
-
-      for (final task in tasks) {
-        if (_occursOn(task, date)) {
-          if (task.isCompleted == 1) {
-            buckets[bucketIndex] = buckets[bucketIndex].copyWith(
-              completed: buckets[bucketIndex].completed + 1,
-            );
-          } else {
-            buckets[bucketIndex] = buckets[bucketIndex].copyWith(
-              pending: buckets[bucketIndex].pending + 1,
-            );
-          }
-        }
-      }
-    }
-
-    return buckets;
-  }
-
-  bool _occursOn(Task task, DateTime day) {
-    if (task.date == null) return false;
-    final formatted = DateFormat.yMd().format(day);
-
-    if (task.repeat == 'Daily') return true;
-    if (task.date == formatted) return true;
-
-    try {
-      final taskDate = DateFormat.yMd().parse(task.date!);
-      final difference = day.difference(taskDate).inDays;
-
-      if (difference < 0) return false;
-
-      if (task.repeat == 'Weekly' && difference % 7 == 0) {
-        return true;
-      }
-
-      if (task.repeat == 'Monthly' && taskDate.day == day.day) {
-        return true;
-      }
-    } catch (_) {
-      return false;
-    }
-
-    return false;
-  }
-
-  DateTime _asDate(DateTime dateTime) => DateTime(dateTime.year, dateTime.month, dateTime.day);
 }
 
-class _SummaryGrid extends StatelessWidget {
-  const _SummaryGrid({
-    required this.completed,
-    required this.pending,
-    required this.overdue,
-  });
+class _HeroProgressCard extends StatelessWidget {
+  const _HeroProgressCard({required this.progress});
 
-  final int completed;
-  final int pending;
-  final int overdue;
+  final double progress;
 
   @override
   Widget build(BuildContext context) {
     final cardColor = Get.isDarkMode ? darkHeaderClr : Colors.white;
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                title: 'summary_completed'.tr,
-                value: completed,
-                icon: Icons.check_circle_outline,
-                color: primaryClr,
-                background: cardColor,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                title: 'summary_pending'.tr,
-                value: pending,
-                icon: Icons.pending_actions_outlined,
-                color: Colors.orangeAccent,
-                background: cardColor,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _StatCard(
-          title: 'summary_overdue'.tr,
-          value: overdue,
-          icon: Icons.warning_amber_rounded,
-          color: Colors.redAccent,
-          background: cardColor,
-        ),
-      ],
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.icon,
-    required this.color,
-    required this.background,
-  });
-
-  final String title;
-  final int value;
-  final IconData icon;
-  final Color color;
-  final Color background;
-
-  @override
-  Widget build(BuildContext context) {
+    final percentage = (progress * 100).round();
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: background,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: color.withOpacity(0.12)),
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: [
+            cardColor.withOpacity(0.95),
+            cardColor.withOpacity(0.85),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Get.isDarkMode
-                ? Colors.black.withOpacity(0.3)
-                : Colors.grey.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          )
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: subTitleStyle),
-                const SizedBox(height: 4),
+                Text('Today\'s Progress', style: titleStyle),
+                const SizedBox(height: 8),
                 Text(
-                  '$value',
-                  style: headingStyle.copyWith(color: color),
+                  'Stay focused and keep momentum.',
+                  style: subTitleStyle.copyWith(
+                    color: Get.isDarkMode ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          SizedBox(
+            width: 86,
+            height: 86,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 8,
+                  backgroundColor: Colors.white.withOpacity(0.4),
+                  valueColor: AlwaysStoppedAnimation(primaryClr),
+                ),
+                Text(
+                  '$percentage%',
+                  style: titleStyle.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -306,175 +136,195 @@ class _StatCard extends StatelessWidget {
   }
 }
 
-class _ProgressChart extends StatelessWidget {
-  const _ProgressChart({required this.buckets});
+class _StatCardRow extends StatelessWidget {
+  const _StatCardRow({
+    required this.pending,
+    required this.completed,
+  });
 
-  final List<_ChartBucket> buckets;
+  final int pending;
+  final int completed;
 
   @override
   Widget build(BuildContext context) {
-    final maxValue = buckets.isEmpty
-        ? 1
-        : buckets.map((b) => b.total).fold<int>(1, (prev, value) => max(prev, value));
+    return Row(
+      children: [
+        Expanded(
+          child: _PastelStatCard(
+            title: 'Active Tasks',
+            value: pending,
+            icon: Icons.work_outline,
+            startColor: const Color(0xFFE4F0FF),
+            endColor: const Color(0xFFCEE2FF),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _PastelStatCard(
+            title: 'Completed Tasks',
+            value: completed,
+            icon: Icons.check_circle_outline,
+            startColor: const Color(0xFFFFE9D8),
+            endColor: const Color(0xFFFFD7B8),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
+class _PastelStatCard extends StatelessWidget {
+  const _PastelStatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.startColor,
+    required this.endColor,
+  });
+
+  final String title;
+  final int value;
+  final IconData icon;
+  final Color startColor;
+  final Color endColor;
+
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Get.isDarkMode ? darkHeaderClr : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primaryClr.withOpacity(0.12)),
+        borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          colors: [startColor, endColor],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          _buildLegend(),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 220,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: buckets
-                  .map((bucket) => Expanded(
-                        child: _Bar(bucket: bucket, maxValue: maxValue),
-                      ))
-                  .toList(),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: Colors.black87),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: subTitleStyle),
+                const SizedBox(height: 6),
+                Text('$value', style: headingStyle),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-
-  Widget _buildLegend() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: const [
-        _LegendDot(color: primaryClr, label: 'Hoàn thành'),
-        SizedBox(width: 12),
-        _LegendDot(color: Colors.orangeAccent, label: 'Chưa xong'),
-      ],
-    );
-  }
 }
 
-class _Bar extends StatelessWidget {
-  const _Bar({required this.bucket, required this.maxValue});
+class _PriorityList extends StatelessWidget {
+  const _PriorityList({required this.tasks});
 
-  final _ChartBucket bucket;
-  final int maxValue;
+  final List<Task> tasks;
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          const labelSpacing = 8.0;
-
-          final textDirection = Directionality.of(context);
-
-          final labelPainter = TextPainter(
-            text: TextSpan(text: bucket.label, style: subTitleStyle),
-            maxLines: 1,
-            textDirection: textDirection,
-          )..layout(maxWidth: constraints.maxWidth);
-
-          final totalPainter = TextPainter(
-            text: TextSpan(text: bucket.total.toString(), style: bodyStyle),
-            maxLines: 1,
-            textDirection: textDirection,
-          )..layout(maxWidth: constraints.maxWidth);
-
-          final reservedHeight =
-              labelPainter.height + totalPainter.height + (labelSpacing * 2);
-          final barAreaHeight = max(0.0, constraints.maxHeight - reservedHeight);
-
-          final completedHeight = (bucket.completed / maxValue) * barAreaHeight;
-          final pendingHeight = (bucket.pending / maxValue) * barAreaHeight;
-
-          return Column(
-            children: [
-              Text(
-                bucket.label,
-                style: subTitleStyle,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: labelSpacing),
-              Expanded(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: SizedBox(
-                    height: barAreaHeight,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        if (pendingHeight > 0)
-                          Container(
-                            height: pendingHeight,
-                            decoration: BoxDecoration(
-                              color: Colors.orangeAccent.withOpacity(0.8),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        if (pendingHeight > 0 && completedHeight > 0)
-                          const SizedBox(height: 4),
-                        if (completedHeight > 0)
-                          Container(
-                            height: completedHeight,
-                            decoration: BoxDecoration(
-                              color: primaryClr,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: labelSpacing),
-              Text(
-                bucket.total.toString(),
-                style: bodyStyle,
-              ),
+    if (tasks.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.9),
+              Colors.white.withOpacity(0.7),
             ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Text(
+          'No high priority tasks yet.',
+          style: subTitleStyle.copyWith(
+            color: Get.isDarkMode ? Colors.white70 : Colors.black54,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 140,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        itemCount: tasks.length,
+        itemBuilder: (context, index) {
+          final task = tasks[index];
+          return Container(
+            width: 220,
+            margin: EdgeInsets.only(right: index == tasks.length - 1 ? 0 : 12),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withOpacity(0.95),
+                  Colors.white.withOpacity(0.75),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title ?? 'Untitled Task',
+                  style: titleStyle.copyWith(fontSize: 16),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const Spacer(),
+                Row(
+                  children: [
+                    Icon(Icons.priority_high, color: orangeClr, size: 18),
+                    const SizedBox(width: 6),
+                    Text(
+                      'High Priority',
+                      style: subTitleStyle.copyWith(fontSize: 14),
+                    ),
+                  ],
+                )
+              ],
+            ),
           );
         },
       ),
     );
-  }
-}
-
-class _LegendDot extends StatelessWidget {
-  const _LegendDot({required this.color, required this.label});
-
-  final Color color;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 10,
-          height: 10,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: bodyStyle),
-      ],
-    );
-  }
-}
-
-class _ChartBucket {
-  const _ChartBucket(this.label, this.completed, this.pending);
-
-  final String label;
-  final int completed;
-  final int pending;
-
-  int get total => completed + pending;
-
-  _ChartBucket copyWith({int? completed, int? pending}) {
-    return _ChartBucket(label, completed ?? this.completed, pending ?? this.pending);
   }
 }
