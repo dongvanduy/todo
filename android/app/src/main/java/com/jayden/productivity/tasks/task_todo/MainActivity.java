@@ -1,4 +1,4 @@
-package com.jayden.productivity.tasks.task_todo;
+package com.jayden.productivity.tasks;
 
 import io.flutter.embedding.android.FlutterActivity;
 
