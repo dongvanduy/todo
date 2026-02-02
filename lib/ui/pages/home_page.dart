@@ -440,9 +440,11 @@ class _HomePageState extends State<HomePage> {
       },
       onDismissed: (direction) {
         if (direction == DismissDirection.startToEnd) {
-          _taskController.markTaskCompleted(task.id);
+          if (task.id != null) {
+            _taskController.markTaskAsCompleted(task.id!);
+          }
         } else {
-          _taskController.delete(task);
+          _taskController.deleteTasks(task);
         }
       },
       child: GestureDetector(
