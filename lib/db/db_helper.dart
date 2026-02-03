@@ -5,7 +5,7 @@ import '../models/task.dart';
 
 class DBHelper {
   static Database? _db;
-  static const int _version = 1;
+  static const int _version = 2;
   static const String _tableName = 'tasks';
 
   static Future<void> initDb() async {
@@ -22,7 +22,7 @@ class DBHelper {
         // When creating the db, create the table
         return db.execute('CREATE TABLE $_tableName ('
             'id INTEGER PRIMARY KEY AUTOINCREMENT, '
-            'title STRING, note TEXT, date STRING, '
+            'title STRING, note TEXT, project STRING, isNote INTEGER, date STRING, '
             'startTime STRING, endTime STRING, '
             'remind INTEGER, repeat STRING, '
             'color INTEGER, '

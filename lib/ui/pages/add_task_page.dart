@@ -19,6 +19,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
+  final TextEditingController _projectController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   String _startTime = DateFormat('hh:mm a').format(DateTime.now()).toString();
@@ -32,6 +33,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
   List<String> repeatList = ['None', 'Daily', 'Weekly', 'Monthly'];
 
   int _selectedColor = 0;
+  String? _selectedProjectOption;
 
   @override
   Widget build(BuildContext context) {
@@ -58,6 +60,63 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 hint: 'Enter note here',
                 controller: _noteController,
               ),
+              InputField(
+                title: 'Project',
+                hint: 'Enter or choose a project',
+                controller: _projectController,
+              ),
+              Obx(() {
+                final projectOptions = _taskController.taskList
+                    .where((task) => task.project?.trim().isNotEmpty ?? false)
+                    .map((task) => task.project!.trim())
+                    .toSet()
+                    .toList()
+                  ..sort();
+
+                if (projectOptions.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                final currentSelection =
+                    projectOptions.contains(_selectedProjectOption)
+                        ? _selectedProjectOption
+                        : null;
+
+                return Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: currentSelection,
+                      hint: Text(
+                        'Select existing project',
+                        style: subTitleStyle,
+                      ),
+                      isExpanded: true,
+                      items: projectOptions
+                          .map(
+                            (project) => DropdownMenuItem(
+                              value: project,
+                              child: Text(project, style: subTitleStyle),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedProjectOption = value;
+                          if (value != null) {
+                            _projectController.text = value;
+                          }
+                        });
+                      },
+                    ),
+                  ),
+                );
+              }),
               InputField(
                 title: 'Date',
                 hint: DateFormat.yMd().format(_selectedDate),
@@ -258,6 +317,10 @@ class _AddTaskPageState extends State<AddTaskPage> {
           color: _selectedColor,
           remind: _selectedRemind,
           repeat: _selectedRepeat,
+          project: _projectController.text.trim().isEmpty
+              ? null
+              : _projectController.text.trim(),
+          isNote: 0,
         ),
       );
       print('Value: $value');

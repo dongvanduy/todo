@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:task_todo/services/theme_services.dart';
+import 'package:task_todo/ui/pages/add_note_page.dart';
 import 'package:task_todo/ui/pages/add_task_page.dart';
 import 'package:task_todo/ui/widgets/button.dart';
 import 'package:task_todo/ui/widgets/task_tile.dart';
@@ -274,10 +275,7 @@ class _HomePageState extends State<HomePage> {
           ),
           MyButton(
               label: '+ ${'add_task'.tr}',
-              onTap: () async {
-                await Get.to(() => const AddTaskPage());
-                _taskController.getTasks();
-              }),
+              onTap: _showAddOptions),
         ],
       ),
     );
@@ -346,6 +344,7 @@ class _HomePageState extends State<HomePage> {
     return Expanded(
       child: Obx(() {
         final filteredTasks = _taskController.taskList
+            .where((task) => task.isNote != 1)
             .where((task) => _isTaskForSelectedDate(task))
             .toList();
 
@@ -408,6 +407,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _scheduleNotification(Task task) {
+    if (task.isNote == 1) return;
     notifyHelper.scheduleTaskNotifications(task);
   }
 
@@ -474,7 +474,9 @@ class _HomePageState extends State<HomePage> {
 
   Widget _showAllTasksTimeline() {
     return Obx(() {
-      final tasks = [..._taskController.taskList];
+      final tasks = _taskController.taskList
+          .where((task) => task.isNote != 1)
+          .toList();
       tasks.sort((a, b) {
         final aDate = _toTaskDateTime(a);
         final bDate = _toTaskDateTime(b);
@@ -658,6 +660,91 @@ class _HomePageState extends State<HomePage> {
             style:
                 isClose ? titleStyle : titleStyle.copyWith(color: Colors.white),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddOptions() {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: Get.isDarkMode ? darkHeaderClr : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 48,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _AddOptionTile(
+              title: 'Thêm công việc',
+              icon: Icons.checklist,
+              onTap: () async {
+                Get.back();
+                await Get.to(() => const AddTaskPage());
+                _taskController.getTasks();
+              },
+            ),
+            const SizedBox(height: 12),
+            _AddOptionTile(
+              title: 'Thêm ghi chú',
+              icon: Icons.note_add_outlined,
+              onTap: () async {
+                Get.back();
+                await Get.to(() => const AddNotePage());
+                _taskController.getTasks();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AddOptionTile extends StatelessWidget {
+  const _AddOptionTile({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Ink(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: theme.colorScheme.primary),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
       ),
     );
