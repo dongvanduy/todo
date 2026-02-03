@@ -1,25 +1,12 @@
-import 'package:date_picker_timeline/date_picker_timeline.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:task_todo/controllers/task_controller.dart';
+import 'package:task_todo/models/task.dart';
+import 'package:task_todo/services/notification_services.dart';
 import 'package:task_todo/services/theme_services.dart';
-import 'package:task_todo/ui/pages/add_note_page.dart';
 import 'package:task_todo/ui/pages/add_task_page.dart';
-import 'package:task_todo/ui/widgets/button.dart';
-import 'package:task_todo/ui/widgets/task_tile.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../controllers/task_controller.dart';
-import '../../models/task.dart';
-import '../../services/notification_services.dart';
-import '../size_config.dart';
-import 'assistant_page.dart';
-import 'dashboard_page.dart';
-import '../theme.dart';
-import 'package:get_storage/get_storage.dart';
+import 'package:task_todo/ui/theme.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -29,890 +16,539 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  DateTime _selectedDate = DateTime.now();
+  final TaskController _taskController = Get.put(TaskController());
   late NotifyHelper notifyHelper;
-  final _settingsBox = GetStorage();
-  late String _selectedLanguageCode;
-  final DatePickerController _datePickerController = DatePickerController();
+
+  // Controller cho hiệu ứng xoay tròn ngày tháng
+  late FixedExtentScrollController _dateScrollController;
+  final int _daysRange = 365 * 2; // Cho phép chọn trong vòng 2 năm
+  final int _initialOffset = 365; // Bắt đầu từ giữa (Hôm nay)
 
   @override
   void initState() {
     super.initState();
     notifyHelper = NotifyHelper();
-    notifyHelper.requestIOSPermissions();
     notifyHelper.initializeNotification();
-    _selectedLanguageCode =
-        _settingsBox.read<String>('language_code') ?? Get.locale?.languageCode ?? 'en';
-    Intl.defaultLocale = _selectedLanguageCode;
+    notifyHelper.requestIOSPermissions();
     _taskController.getTasks();
+
+    // Khởi tạo controller ngày ở vị trí "Hôm nay"
+    _dateScrollController = FixedExtentScrollController(initialItem: _initialOffset);
   }
 
-  DateTime _selectedDate = DateTime.now();
-  final TaskController _taskController = Get.put(TaskController());
+  @override
+  void dispose() {
+    _dateScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    SizeConfig().init(context);
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        // ignore: deprecated_member_use
-        backgroundColor: context.theme.colorScheme.background,
-        appBar: _customAppBar(),
-        floatingActionButton: _buildAssistantButton(),
-        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        body: Column(
-          children: [
-            _addTaskBar(),
-            TabBar(
-              indicatorColor: primaryClr,
-              labelColor: primaryClr,
-              unselectedLabelColor:
-                  Get.isDarkMode ? Colors.white70 : Colors.grey,
-              tabs: [
-                Tab(text: 'tab_by_day'.tr),
-                Tab(text: 'tab_all'.tr),
-                Tab(text: 'tab_stats'.tr),
-              ],
-            ),
-            Expanded(
-              child: TabBarView(
-                children: [
-                  Column(
-                    children: [
-                      _addDateBar(),
-                      const SizedBox(height: 6),
-                      _showTasksForSelectedDate(),
-                    ],
-                  ),
-                  _showAllTasksTimeline(),
-                  DashboardPage(taskController: _taskController),
-                ],
-              ),
-            ),
-          ],
-        ),
+    return Scaffold(
+      backgroundColor: context.theme.scaffoldBackgroundColor,
+      appBar: _buildAppBar(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildUserInfo(),
+          _buildDateWheelPicker(), // Thanh ngày tháng xoay tròn
+          const SizedBox(height: 10),
+          _buildTasksList(),       // Danh sách Timeline dọc
+        ],
       ),
+      bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
-  AppBar _customAppBar() {
+  // --- WIDGETS CON ---
+
+  AppBar _buildAppBar() {
     return AppBar(
-      leading: IconButton(
-        onPressed: () {
-          ThemeServices().switchTheme();
-        },
-        icon: Icon(
-          Get.isDarkMode
-              ? Icons.wb_sunny_outlined
-              : Icons.nightlight_round_outlined,
-          size: 24,
-          color: Get.isDarkMode ? Colors.white : darkGreyClr,
-        ),
+      title: Text(
+          'Taskito',
+          style: TextStyle(
+              color: Get.isDarkMode ? Colors.white : Colors.black,
+              fontWeight: FontWeight.bold
+          )
       ),
+      backgroundColor: Colors.transparent,
       elevation: 0,
-      // ignore: deprecated_member_use
-      backgroundColor: context.theme.colorScheme.background,
       actions: [
         IconButton(
-          icon: Icon(Icons.cleaning_services_outlined,
-              size: 24, color: Get.isDarkMode ? Colors.white : darkGreyClr),
-          onPressed: () {
-            notifyHelper.cancelAllNotifications();
-            _taskController.deleteAllTasks();
-          },
-        ),
-        GestureDetector(
-          onTap: _showProfileMenu,
-          child: const CircleAvatar(
-            backgroundImage: AssetImage('images/person.jpeg'),
-            radius: 18,
-          ),
-        ),
-        const SizedBox(
-          width: 12,
-        ),
+            icon: Icon(Icons.search, color: Get.isDarkMode ? Colors.white : Colors.black),
+            onPressed: () {}),
+        IconButton(
+            icon: Icon(Icons.nightlight_round, color: Get.isDarkMode ? Colors.white : Colors.black),
+            onPressed: () {
+              ThemeServices().switchTheme();
+            }),
       ],
-      centerTitle: true,
-    );
-  }
-
-  void _showProfileMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: context.theme.colorScheme.background,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      isScrollControlled: true,
-      builder: (context) {
-        final theme = Theme.of(context);
-        final textTheme = theme.textTheme;
-
-        final sheetHeight = MediaQuery.of(context).size.height * 0.5;
-
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 520),
-                child: SizedBox(
-                  height: sheetHeight,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.max,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 48,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.onBackground.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        'account_settings_title'.tr,
-                        style: textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'account_settings_subtitle'.tr,
-                        style: textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 18),
-                      _LanguageSelectTile(
-                        selectedCode: _selectedLanguageCode,
-                        onChanged: _updateLanguage,
-                      ),
-                      const Spacer(),
-                      _ProfileActionTile(
-                        icon: Icons.privacy_tip_outlined,
-                        title: 'privacy_item_title'.tr,
-                        subtitle: 'privacy_item_subtitle'.tr,
-                        selected: false,
-                        onTap: () {
-                          Navigator.pop(context);
-                          _openPrivacyPolicyLink();
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _updateLanguage(String code) {
-    setState(() {
-      _selectedLanguageCode = code;
-    });
-    Get.updateLocale(Locale(code));
-    Intl.defaultLocale = code;
-    _settingsBox.write('language_code', code);
-  }
-
-  Future<void> _openPrivacyPolicyLink() async {
-    const url =
-        'https://sites.google.com/view/privacy-policy-plan-up/trang-ch%E1%BB%A7';
-    await launchUrl(
-      Uri.parse(url),
-      mode: LaunchMode.externalApplication,
-    );
-  }
-
-  Widget _buildAssistantButton() {
-    return InkWell(
-      onTap: () => Get.to(() => const GeminiAssistantPage()),
-      // Đặt borderRadius để tạo hiệu ứng khi chạm (splash effect)
-      // Nếu không muốn splash effect, dùng GestureDetector
-      borderRadius: BorderRadius.circular(100),
-      child: Padding(
-        padding: const EdgeInsets.all(8.0), // Thêm padding nếu cần khoảng trống xung quanh icon
-        child: SvgPicture.asset(
-          'images/chatbot.svg',
-          width: 48,
-          height: 48,
-        ),
+      leading: IconButton(
+        icon: Icon(Icons.arrow_back_ios, color: Get.isDarkMode ? Colors.white : Colors.black),
+        onPressed: () => Get.back(),
       ),
     );
   }
 
-  _addTaskBar() {
-    return Container(
-      margin: const EdgeInsets.only(left: 20, right: 10, top: 10),
+  Widget _buildUserInfo() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          InkWell(
-            onTap: _selectDate,
-            borderRadius: BorderRadius.circular(12),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    DateFormat.yMMMMd().format(_selectedDate),
-                    style: subHeadingStyle,
-                  ),
-                  Text(
-                    'today_label'.tr,
-                    style: subHeadingStyle,
-                  ),
-                ],
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                DateFormat('EEEE, d MMMM', 'vi').format(_selectedDate),
+                style: titleStyle.copyWith(fontSize: 20),
               ),
-            ),
-          ),
-          MyButton(
-              label: '+ ${'add_task'.tr}',
-              onTap: _showAddOptions),
-        ],
-      ),
-    );
-  }
-
-  _addDateBar() {
-    return Container(
-      margin: const EdgeInsets.only(left: 20, right: 10, top: 10),
-      child: DatePicker(
-        DateTime.now(),
-        controller: _datePickerController,
-        width: 80,
-        height: 100,
-        initialSelectedDate: _selectedDate,
-        selectedTextColor: Colors.white,
-        selectionColor: primaryClr,
-        dateTextStyle: GoogleFonts.lato(
-            textStyle: const TextStyle(
-          color: Colors.grey,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-        )),
-        dayTextStyle: GoogleFonts.lato(
-            textStyle: const TextStyle(
-          color: Colors.grey,
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        )),
-        monthTextStyle: GoogleFonts.lato(
-            textStyle: const TextStyle(
-          color: Colors.grey,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-        )),
-        onDateChange: (newDate) {
-          setState(() {
-            _selectedDate = newDate;
-          });
-        },
-      ),
-    );
-  }
-
-  Future<void> _selectDate() async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      locale: Locale(_selectedLanguageCode),
-    );
-
-    if (pickedDate != null) {
-      setState(() {
-        _selectedDate = pickedDate;
-        _datePickerController.animateToDate(pickedDate);
-      });
-    }
-  }
-
-  Future<void> _onRefresh() async {
-    _taskController.getTasks();
-  }
-
-  _showTasksForSelectedDate() {
-    return Expanded(
-      child: Obx(() {
-        final filteredTasks = _taskController.taskList
-            .where((task) => task.isNote != 1)
-            .where((task) => _isTaskForSelectedDate(task))
-            .toList();
-
-        if (filteredTasks.isEmpty) {
-          return _noTaskMsg();
-        }
-
-        return RefreshIndicator(
-          onRefresh: _onRefresh,
-          child: ListView.builder(
-            scrollDirection: SizeConfig.orientation == Orientation.landscape
-                ? Axis.horizontal
-                : Axis.vertical,
-            itemBuilder: (BuildContext context, int index) {
-              var task = filteredTasks[index];
-
-              _scheduleNotification(task);
-
-              return AnimationConfiguration.staggeredList(
-                position: index,
-                duration: const Duration(milliseconds: 1375),
-                child: SlideAnimation(
-                  horizontalOffset: 300,
-                  child: FadeInAnimation(
-                    child: _buildDismissibleTaskTile(task),
-                  ),
-                ),
-              );
-            },
-            itemCount: filteredTasks.length,
-          ),
-        );
-      }),
-    );
-  }
-
-  bool _isTaskForSelectedDate(Task task) {
-    if (task.date == null || task.startTime == null) return false;
-
-    final formattedSelected = DateFormat.yMd().format(_selectedDate);
-    if (task.repeat == 'Daily') {
-      return true;
-    }
-
-    if (task.date == formattedSelected) {
-      return true;
-    }
-
-    final taskDate = DateFormat.yMd().parse(task.date!);
-    if (task.repeat == 'Weekly' &&
-        _selectedDate.difference(taskDate).inDays % 7 == 0) {
-      return true;
-    }
-
-    if (task.repeat == 'Monthly' && taskDate.day == _selectedDate.day) {
-      return true;
-    }
-
-    return false;
-  }
-
-  void _scheduleNotification(Task task) {
-    if (task.isNote == 1) return;
-    notifyHelper.scheduleTaskNotifications(task);
-  }
-
-  Widget _buildDismissibleTaskTile(Task task) {
-    var hapticTriggered = false;
-    return Dismissible(
-      key: ValueKey(
-          'task-${task.id ?? task.title}-${task.startTime}-${task.date}'),
-      direction: DismissDirection.horizontal,
-      background: _buildSwipeBackground(
-        alignment: Alignment.centerLeft,
-        icon: Icons.check_circle,
-        color: Colors.green.shade100,
-        iconColor: Colors.green.shade700,
-      ),
-      secondaryBackground: _buildSwipeBackground(
-        alignment: Alignment.centerRight,
-        icon: Icons.delete_outline,
-        color: Colors.red.shade100,
-        iconColor: Colors.red.shade700,
-      ),
-      onUpdate: (details) {
-        if (!hapticTriggered && details.progress >= 0.35) {
-          hapticTriggered = true;
-          HapticFeedback.mediumImpact();
-        }
-        if (hapticTriggered && details.progress < 0.2) {
-          hapticTriggered = false;
-        }
-      },
-      onDismissed: (direction) {
-        if (direction == DismissDirection.startToEnd) {
-          if (task.id != null) {
-            _taskController.markTaskAsCompleted(task.id!);
-          }
-        } else {
-          _taskController.deleteTasks(task);
-        }
-      },
-      child: GestureDetector(
-        onTap: () => _showBottomSheet(context, task),
-        child: TaskTile(task),
-      ),
-    );
-  }
-
-  Widget _buildSwipeBackground({
-    required Alignment alignment,
-    required IconData icon,
-    required Color color,
-    required Color iconColor,
-  }) {
-    return Container(
-      alignment: alignment,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      color: color,
-      child: Icon(
-        icon,
-        color: iconColor,
-        size: 28,
-      ),
-    );
-  }
-
-  Widget _showAllTasksTimeline() {
-    return Obx(() {
-      final tasks = _taskController.taskList
-          .where((task) => task.isNote != 1)
-          .toList();
-      tasks.sort((a, b) {
-        final aDate = _toTaskDateTime(a);
-        final bDate = _toTaskDateTime(b);
-        return aDate.compareTo(bDate);
-      });
-
-      if (tasks.isEmpty) {
-        return _noTaskMsg();
-      }
-
-      return RefreshIndicator(
-        onRefresh: _onRefresh,
-        child: ListView.builder(
-          itemCount: tasks.length,
-          itemBuilder: (context, index) {
-            final task = tasks[index];
-            return AnimationConfiguration.staggeredList(
-              position: index,
-              duration: const Duration(milliseconds: 1375),
-              child: SlideAnimation(
-                horizontalOffset: 300,
-                child: FadeInAnimation(
-                  child: _buildDismissibleTaskTile(task),
-                ),
-              ),
-            );
-          },
-        ),
-      );
-    });
-  }
-
-  DateTime _toTaskDateTime(Task task) {
-    try {
-      final date = task.date != null
-          ? DateFormat.yMd().parse(task.date!)
-          : DateTime.now();
-      final time = task.startTime != null
-          ? DateFormat.jm().parse(task.startTime!)
-          : DateTime.now();
-      return DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
-    } catch (e) {
-      return DateTime.now();
-    }
-  }
-
-  _noTaskMsg() {
-    return RefreshIndicator(
-      onRefresh: _onRefresh,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: SizeConfig.screenHeight * 0.55,
-          ),
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SvgPicture.asset(
-                    'images/task.svg',
-                    // ignore: deprecated_member_use
-                    color: primaryClr.withOpacity(0.5),
-                    height: 96,
-                    semanticsLabel: 'Task',
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'no_tasks_title'.tr,
-                    style: subHeadingStyle,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'no_tasks_subtitle'.tr,
-                    style: subTitleStyle,
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  _showBottomSheet(BuildContext context, Task task) {
-    Get.bottomSheet(SingleChildScrollView(
-      child: Container(
-        padding: const EdgeInsets.only(top: 4),
-        width: SizeConfig.screenWidth,
-        height: (SizeConfig.orientation == Orientation.landscape)
-            ? (task.isCompleted == 1
-                ? SizeConfig.screenHeight * 0.6
-                : SizeConfig.screenHeight * 0.8)
-            : (task.isCompleted == 1
-                ? SizeConfig.screenHeight * 0.30
-                : SizeConfig.screenHeight * 0.39),
-        color: Get.isDarkMode ? darkHeaderClr : Colors.white,
-        child: Column(
-          children: [
-            Flexible(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: Get.isDarkMode ? Colors.grey[600] : Colors.grey[300],
-                ),
-              ),
-            ),
-            const SizedBox(
-              height: 20,
-            ),
-            task.isCompleted == 1
-                ? Container()
-                : _buildBottomSheet(
-                    label: 'task_completed'.tr,
-                    onTap: () {
-                      NotifyHelper().cancelNotification(task);
-                      _taskController.markTaskAsCompleted(task.id!);
-                      Get.back();
-                    },
-                    clr: primaryClr),
-            _buildBottomSheet(
-                label: 'delete_task'.tr,
-                onTap: () {
-                  NotifyHelper().cancelNotification(task);
-                  _taskController.deleteTasks(task);
-                  Get.back();
-                },
-                clr: Colors.red[300]!),
-            Divider(color: Get.isDarkMode ? Colors.grey : darkGreyClr),
-            _buildBottomSheet(
-                label: 'cancel'.tr,
-                onTap: () {
-                  Get.back();
-                },
-                clr: primaryClr),
-            const SizedBox(
-              height: 5,
-            ),
-          ],
-        ),
-      ),
-    ));
-  }
-
-  _buildBottomSheet(
-      {required String label,
-      required Function() onTap,
-      required Color clr,
-      bool isClose = false}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        height: 65,
-        width: SizeConfig.screenWidth * 0.9,
-        decoration: BoxDecoration(
-            border: Border.all(
-              width: 2,
-              color: isClose
-                  ? Get.isDarkMode
-                      ? Colors.grey[600]!
-                      : Colors.grey[300]!
-                  : clr,
-            ),
-            borderRadius: BorderRadius.circular(20),
-            color: isClose ? Colors.transparent : clr),
-        child: Center(
-          child: Text(
-            label,
-            style:
-                isClose ? titleStyle : titleStyle.copyWith(color: Colors.white),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showAddOptions() {
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        decoration: BoxDecoration(
-          color: Get.isDarkMode ? darkHeaderClr : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 48,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            const SizedBox(height: 16),
-            _AddOptionTile(
-              title: 'Thêm công việc',
-              icon: Icons.checklist,
-              onTap: () async {
-                Get.back();
-                await Get.to(() => const AddTaskPage());
-                _taskController.getTasks();
-              },
-            ),
-            const SizedBox(height: 12),
-            _AddOptionTile(
-              title: 'Thêm ghi chú',
-              icon: Icons.note_add_outlined,
-              onTap: () async {
-                Get.back();
-                await Get.to(() => const AddNotePage());
-                _taskController.getTasks();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AddOptionTile extends StatelessWidget {
-  const _AddOptionTile({
-    required this.title,
-    required this.icon,
-    required this.onTap,
-  });
-
-  final String title;
-  final IconData icon;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surfaceVariant.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: theme.colorScheme.primary),
-            const SizedBox(width: 12),
-            Text(
-              title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LanguageSelectTile extends StatelessWidget {
-  const _LanguageSelectTile({
-    required this.selectedCode,
-    required this.onChanged,
-  });
-
-  final String selectedCode;
-  final ValueChanged<String> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.surfaceVariant.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: colorScheme.primary.withOpacity(0.12)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              Icons.language,
-              color: colorScheme.primary,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'language_select_label'.tr,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'language_select_hint'.tr,
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          DropdownButton<String>(
-            value: selectedCode,
-            underline: const SizedBox.shrink(),
-            items: [
-              DropdownMenuItem(
-                value: 'vi',
-                child: Text('language_vi'.tr),
-              ),
-              DropdownMenuItem(
-                value: 'en',
-                child: Text('language_en'.tr),
-              ),
+              const Text("Hôm nay", style: TextStyle(fontSize: 14, color: Colors.grey)),
             ],
-            onChanged: (value) {
-              if (value != null) onChanged(value);
-            },
+          ),
+          CircleAvatar(
+            radius: 24,
+            backgroundImage: const AssetImage('images/person.jpeg'),
+            backgroundColor: Colors.grey[200],
           )
         ],
       ),
     );
   }
+
+  Widget _buildDateWheelPicker() {
+    return Container(
+      height: 90,
+      margin: const EdgeInsets.only(top: 10),
+      // Sử dụng RotatedBox để biến cuộn dọc thành cuộn ngang
+      child: RotatedBox(
+        quarterTurns: -1,
+        child: ListWheelScrollView.useDelegate(
+          controller: _dateScrollController,
+          itemExtent: 70, // Độ rộng của mỗi item ngày
+          perspective: 0.005, // Tạo hiệu ứng cong 3D
+          diameterRatio: 1.5, // Độ cong của vòng xoay
+          physics: const FixedExtentScrollPhysics(),
+          onSelectedItemChanged: (index) {
+            int daysFromStart = index - _initialOffset;
+            DateTime date = DateTime.now().add(Duration(days: daysFromStart));
+            setState(() {
+              _selectedDate = date;
+            });
+          },
+          childDelegate: ListWheelChildBuilderDelegate(
+            childCount: _daysRange,
+            builder: (context, index) {
+              int daysFromStart = index - _initialOffset;
+              DateTime date = DateTime.now().add(Duration(days: daysFromStart));
+              bool isSelected = DateFormat.yMd().format(date) ==
+                  DateFormat.yMd().format(_selectedDate);
+
+              return RotatedBox(
+                quarterTurns: 1,
+                child: _buildDateItem(date, isSelected),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateItem(DateTime date, bool isSelected) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: 60,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: isSelected ? primaryClr : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        border: isSelected ? null : Border.all(color: Colors.grey.withOpacity(0.3)),
+        boxShadow: isSelected ? [
+          BoxShadow(color: primaryClr.withOpacity(0.5), blurRadius: 10, offset: const Offset(0, 5))
+        ] : [],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            DateFormat('E', 'vi').format(date).toUpperCase(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            DateFormat('d').format(date),
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: isSelected ? Colors.white : Get.isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTasksList() {
+    return Expanded(
+      child: Obx(() {
+        var tasks = _taskController.taskList.where((task) {
+          if (task.repeat == 'Daily') return true;
+          return task.date == DateFormat.yMd().format(_selectedDate);
+        }).toList();
+
+        tasks.sort((a, b) => (a.startTime ?? "").compareTo(b.startTime ?? ""));
+
+        if (tasks.isEmpty) {
+          return _buildNoTaskWidget();
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.only(bottom: 50),
+          itemCount: tasks.length + 1,
+          itemBuilder: (context, index) {
+            if (index == tasks.length) {
+              return const AddTaskButtonTimeline();
+            }
+
+            Task task = tasks[index];
+            return GestureDetector(
+              onTap: () => _showBottomSheet(context, task),
+              child: TaskTimelineItem(
+                task: task,
+                isFirst: index == 0,
+                isLast: index == tasks.length - 1,
+              ),
+            );
+          },
+        );
+      }),
+    );
+  }
+
+  _showBottomSheet(BuildContext context, Task task) {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.only(top: 4),
+        height: task.isCompleted == 1
+            ? MediaQuery.of(context).size.height * 0.24
+            : MediaQuery.of(context).size.height * 0.32,
+        color: Get.isDarkMode ? darkHeaderClr : Colors.white,
+        child: Column(
+          children: [
+            Container(
+              height: 6, width: 120,
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.grey[300]),
+            ),
+            const Spacer(),
+            task.isCompleted == 1
+                ? Container()
+                : _buildBottomSheetButton(
+              label: "Hoàn thành",
+              onTap: () {
+                _taskController.markTaskAsCompleted(task.id!);
+                Get.back();
+              },
+              clr: primaryClr,
+            ),
+            _buildBottomSheetButton(
+                label: "Xóa công việc",
+                onTap: () {
+                  _taskController.deleteTasks(task);
+                  Get.back();
+                },
+                clr: Colors.red[300]!),
+            const SizedBox(height: 20),
+            _buildBottomSheetButton(
+                label: "Đóng",
+                onTap: () => Get.back(),
+                clr: Colors.white,
+                isClose: true),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  _buildBottomSheetButton({
+    required String label,
+    required Function() onTap,
+    required Color clr,
+    bool isClose = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        height: 55,
+        width: MediaQuery.of(context).size.width * 0.9,
+        decoration: BoxDecoration(
+          border: Border.all(
+            width: 2,
+            color: isClose ? Colors.grey[300]! : clr,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          color: isClose ? Colors.transparent : clr,
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: isClose
+                ? titleStyle.copyWith(color: Colors.black)
+                : titleStyle.copyWith(color: Colors.white),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoTaskWidget() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.task, size: 80, color: Colors.grey),
+          const SizedBox(height: 10),
+          const Text("Không có việc gì hôm nay!", style: TextStyle(color: Colors.grey)),
+          const SizedBox(height: 20),
+          AddTaskButton( // Đây là class bạn bị thiếu trước đó
+              label: 'Thêm nhiệm vụ',
+              onTap: () async {
+                await Get.to(() => const AddTaskPage());
+                _taskController.getTasks();
+              }
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomNavBar() {
+    return BottomNavigationBar(
+      type: BottomNavigationBarType.fixed,
+      selectedItemColor: primaryClr,
+      unselectedItemColor: Colors.grey,
+      showSelectedLabels: true,
+      showUnselectedLabels: true,
+      items: [
+        BottomNavigationBarItem(
+          icon: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: primaryClr.withOpacity(0.1), shape: BoxShape.circle),
+            child: const Icon(Icons.access_time_filled),
+          ),
+          label: 'Hôm nay',
+        ),
+        const BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: 'Bảng'),
+        const BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch'),
+        const BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Của tôi'),
+      ],
+    );
+  }
 }
 
-class _ProfileActionTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool selected;
-  final VoidCallback onTap;
+// --- CLASS UI ---
 
-  const _ProfileActionTile({
+// Class này dành cho nút "Thêm nhiệm vụ" khi danh sách trống
+class AddTaskButton extends StatelessWidget {
+  final String label;
+  final Function() onTap;
+
+  const AddTaskButton({Key? key, required this.label, required this.onTap}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 160,
+        height: 50,
+        decoration: BoxDecoration(
+          color: primaryClr,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+}
+
+// Class này dành cho Item trong danh sách Timeline
+class TaskTimelineItem extends StatelessWidget {
+  final Task task;
+  final bool isFirst;
+  final bool isLast;
+
+  const TaskTimelineItem({
     Key? key,
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.selected = false,
-    required this.onTap,
+    required this.task,
+    this.isFirst = false,
+    this.isLast = false,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
+    Color statusColor = _getBGClr(task.color ?? 0);
+    bool isCompleted = task.isCompleted == 1;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        width: 230,
-        decoration: BoxDecoration(
-          color: selected
-              ? colorScheme.primary.withOpacity(0.08)
-              : colorScheme.surfaceVariant.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? colorScheme.primary : Colors.transparent,
-            width: 1.2,
-          ),
-        ),
-        padding: const EdgeInsets.all(14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withOpacity(0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                icon,
-                color: colorScheme.primary,
-                size: 22,
-              ),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const SizedBox(width: 20),
+          SizedBox(
+            width: 50,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const SizedBox(height: 16),
+                Text(
+                  task.startTime ?? "",
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+                Text(
+                  task.endTime ?? "",
+                  style: const TextStyle(color: Colors.grey, fontSize: 10),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 20,
+            child: Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                Container(
+                  width: 2,
+                  color: Colors.grey[300],
+                  margin: EdgeInsets.only(
+                      top: isFirst ? 20 : 0,
+                      bottom: 0
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.only(top: 18),
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                      color: isCompleted ? Colors.green : statusColor,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                      boxShadow: [
+                        BoxShadow(color: statusColor.withOpacity(0.4), blurRadius: 4, spreadRadius: 1)
+                      ]
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(left: 10, right: 20, bottom: 20),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isCompleted ? Colors.grey[100] : statusColor.withOpacity(0.1),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(20),
+                  bottomLeft: Radius.circular(20),
+                  bottomRight: Radius.circular(20),
+                  topLeft: Radius.circular(5),
+                ),
+                border: Border.all(
+                  color: isCompleted ? Colors.transparent : statusColor.withOpacity(0.3),
+                ),
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Expanded(
                         child: Text(
-                          title,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
+                          task.title ?? "",
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            decoration: isCompleted ? TextDecoration.lineThrough : null,
+                            color: isCompleted ? Colors.grey : Colors.black87,
                           ),
                         ),
                       ),
-                      if (selected)
-                        Icon(
-                          Icons.check_circle,
-                          color: colorScheme.primary,
-                          size: 20,
-                        ),
+                      if (isCompleted)
+                        const Icon(Icons.check_circle, color: Colors.green, size: 18)
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  if (task.note != null && task.note!.isNotEmpty)
+                    Text(
+                      task.note!,
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 13,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                 ],
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getBGClr(int no) {
+    switch (no) {
+      case 0: return bluishClr;
+      case 1: return pinkClr;
+      case 2: return orangeClr;
+      default: return bluishClr;
+    }
+  }
+}
+
+// Class này dành cho nút "Thêm nhiệm vụ" ở cuối danh sách Timeline
+class AddTaskButtonTimeline extends StatelessWidget {
+  const AddTaskButtonTimeline({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 80, right: 20, bottom: 20),
+      child: InkWell(
+        onTap: () async {
+          await Get.to(() => const AddTaskPage());
+          Get.find<TaskController>().getTasks();
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey[300]!, style: BorderStyle.solid),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.add, color: Colors.grey),
+              SizedBox(width: 8),
+              Text("Thêm nhiệm vụ mới", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ],
+          ),
         ),
       ),
     );
