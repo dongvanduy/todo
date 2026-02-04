@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:task_todo/controllers/project_controller.dart';
 import 'package:task_todo/controllers/task_controller.dart';
 import 'package:task_todo/ui/theme.dart';
 import 'package:task_todo/ui/widgets/button.dart';
@@ -8,7 +9,10 @@ import '../../models/task.dart';
 import '../widgets/input_field.dart';
 
 class AddTaskPage extends StatefulWidget {
-  const AddTaskPage({Key? key}) : super(key: key);
+  const AddTaskPage({Key? key, this.task, this.presetProject}) : super(key: key);
+
+  final Task? task;
+  final String? presetProject;
 
   @override
   State<AddTaskPage> createState() => _AddTaskPageState();
@@ -16,10 +20,11 @@ class AddTaskPage extends StatefulWidget {
 
 class _AddTaskPageState extends State<AddTaskPage> {
   final TaskController _taskController = Get.put(TaskController());
+  final ProjectController _projectController = Get.put(ProjectController());
 
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _noteController = TextEditingController();
-  final TextEditingController _projectController = TextEditingController();
+  final TextEditingController _projectNameController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   String _startTime = DateFormat('hh:mm a').format(DateTime.now()).toString();
@@ -36,6 +41,38 @@ class _AddTaskPageState extends State<AddTaskPage> {
   String? _selectedProjectOption;
 
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() async {
+      await _taskController.getTasks();
+      await _projectController.getProjects();
+      await _projectController.ensureProjects(
+        _taskController.taskList
+            .map((task) => task.project ?? '')
+            .where((project) => project.trim().isNotEmpty),
+      );
+    });
+    if (widget.task != null) {
+      final task = widget.task!;
+      _titleController.text = task.title ?? '';
+      _noteController.text = task.note ?? '';
+      _projectNameController.text = task.project ?? '';
+      _selectedDate = task.date != null
+          ? DateFormat.yMd().parse(task.date!)
+          : _selectedDate;
+      _startTime = task.startTime ?? _startTime;
+      _endTime = task.endTime ?? _endTime;
+      _selectedRemind = task.remind ?? _selectedRemind;
+      _selectedRepeat = task.repeat ?? _selectedRepeat;
+      _selectedColor = task.color ?? _selectedColor;
+      _selectedProjectOption = task.project;
+    } else if (widget.presetProject != null) {
+      _projectNameController.text = widget.presetProject!.trim();
+      _selectedProjectOption = widget.presetProject!.trim();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       // ignore: deprecated_member_use
@@ -47,7 +84,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
           child: Column(
             children: [
               Text(
-                'Add Task',
+                widget.task == null ? 'Add Task' : 'Edit Task',
                 style: headingStyle,
               ),
               InputField(
@@ -63,12 +100,11 @@ class _AddTaskPageState extends State<AddTaskPage> {
               InputField(
                 title: 'Project',
                 hint: 'Enter or choose a project',
-                controller: _projectController,
+                controller: _projectNameController,
               ),
               Obx(() {
-                final projectOptions = _taskController.taskList
-                    .where((task) => task.project?.trim().isNotEmpty ?? false)
-                    .map((task) => task.project!.trim())
+                final projectOptions = _projectController.projectList
+                    .map((project) => project.name)
                     .toSet()
                     .toList()
                   ..sort();
@@ -90,10 +126,10 @@ class _AddTaskPageState extends State<AddTaskPage> {
                     border: Border.all(color: Colors.grey),
                   ),
                   child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: currentSelection,
-                      hint: Text(
-                        'Select existing project',
+                  child: DropdownButton<String>(
+                    value: currentSelection,
+                    hint: Text(
+                      'Select existing project',
                         style: subTitleStyle,
                       ),
                       isExpanded: true,
@@ -109,7 +145,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                         setState(() {
                           _selectedProjectOption = value;
                           if (value != null) {
-                            _projectController.text = value;
+                            _projectNameController.text = value;
                           }
                         });
                       },
@@ -244,7 +280,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 children: [
                   _colorPalette(),
                   MyButton(
-                      label: 'Create Task',
+                      label: widget.task == null ? 'Create Task' : 'Save Task',
                       onTap: () {
                         _validateData();
                       }),
@@ -286,8 +322,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
 
   _validateData() {
     if (_titleController.text.isNotEmpty && _noteController.text.isNotEmpty) {
-      _addTasksToDb();
-      Get.back();
+      _saveTask();
     } else if (_titleController.text.isNotEmpty ||
         _noteController.text.isNotEmpty) {
       Get.snackbar('required', 'All fields are required!',
@@ -304,26 +339,52 @@ class _AddTaskPageState extends State<AddTaskPage> {
     }
   }
 
-  _addTasksToDb() async {
+  Future<void> _saveTask() async {
     try {
-      int value = await _taskController.addTask(
-        task: Task(
-          title: _titleController.text,
-          note: _noteController.text,
-          isCompleted: 0,
-          date: DateFormat.yMd().format(_selectedDate),
-          startTime: _startTime,
-          endTime: _endTime,
-          color: _selectedColor,
-          remind: _selectedRemind,
-          repeat: _selectedRepeat,
-          project: _projectController.text.trim().isEmpty
-              ? null
-              : _projectController.text.trim(),
-          isNote: 0,
-        ),
-      );
-      print('Value: $value');
+      final projectName = _projectNameController.text.trim();
+      final normalizedProject = projectName.isEmpty ? null : projectName;
+      if (normalizedProject != null) {
+        await _projectController.ensureProject(normalizedProject);
+      }
+
+      if (widget.task == null) {
+        final value = await _taskController.addTask(
+          task: Task(
+            title: _titleController.text,
+            note: _noteController.text,
+            isCompleted: 0,
+            date: DateFormat.yMd().format(_selectedDate),
+            startTime: _startTime,
+            endTime: _endTime,
+            color: _selectedColor,
+            remind: _selectedRemind,
+            repeat: _selectedRepeat,
+            project: normalizedProject,
+            isNote: 0,
+          ),
+        );
+        print('Value: $value');
+      } else {
+        final existing = widget.task!;
+        final value = await _taskController.updateTask(
+          Task(
+            id: existing.id,
+            title: _titleController.text,
+            note: _noteController.text,
+            isCompleted: existing.isCompleted,
+            date: DateFormat.yMd().format(_selectedDate),
+            startTime: _startTime,
+            endTime: _endTime,
+            color: _selectedColor,
+            remind: _selectedRemind,
+            repeat: _selectedRepeat,
+            project: normalizedProject,
+            isNote: existing.isNote,
+          ),
+        );
+        print('Updated: $value');
+      }
+      Get.back(result: true);
     } catch (e) {
       print('error: $e');
     }
