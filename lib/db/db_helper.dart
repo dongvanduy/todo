@@ -47,6 +47,18 @@ class DBHelper {
         },
         onOpen: (Database db) async {
           await _createProjectsTable(db);
+          await _addColumnIfMissing(
+            db,
+            table: _tableName,
+            column: 'project',
+            type: 'STRING',
+          );
+          await _addColumnIfMissing(
+            db,
+            table: _tableName,
+            column: 'isNote',
+            type: 'INTEGER',
+          );
         },
       );
       print('DB Created');
