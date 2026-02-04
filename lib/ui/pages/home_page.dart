@@ -6,6 +6,7 @@ import 'package:task_todo/models/task.dart';
 import 'package:task_todo/services/notification_services.dart';
 import 'package:task_todo/services/theme_services.dart';
 import 'package:task_todo/ui/pages/add_task_page.dart';
+import 'package:task_todo/ui/pages/project_page.dart';
 import 'package:task_todo/ui/theme.dart';
 
 class HomePage extends StatefulWidget {
@@ -19,6 +20,7 @@ class _HomePageState extends State<HomePage> {
   DateTime _selectedDate = DateTime.now();
   final TaskController _taskController = Get.put(TaskController());
   late NotifyHelper notifyHelper;
+  int _selectedIndex = 0;
 
   // Controller cho hiệu ứng xoay tròn ngày tháng
   late FixedExtentScrollController _dateScrollController;
@@ -338,6 +340,15 @@ class _HomePageState extends State<HomePage> {
       unselectedItemColor: Colors.grey,
       showSelectedLabels: true,
       showUnselectedLabels: true,
+      currentIndex: _selectedIndex,
+      onTap: (index) async {
+        setState(() {
+          _selectedIndex = index;
+        });
+        if (index == 1) {
+          await Get.to(() => const ProjectPage());
+        }
+      },
       items: [
         BottomNavigationBarItem(
           icon: Container(
@@ -347,7 +358,7 @@ class _HomePageState extends State<HomePage> {
           ),
           label: 'Hôm nay',
         ),
-        const BottomNavigationBarItem(icon: Icon(Icons.grid_view), label: 'Bảng'),
+        const BottomNavigationBarItem(icon: Icon(Icons.folder_open), label: 'Project'),
         const BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch'),
         const BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Của tôi'),
       ],
