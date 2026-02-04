@@ -6,6 +6,8 @@ import 'package:task_todo/models/task.dart';
 import 'package:task_todo/services/notification_services.dart';
 import 'package:task_todo/services/theme_services.dart';
 import 'package:task_todo/ui/pages/add_task_page.dart';
+import 'package:task_todo/ui/pages/calendar_page.dart';
+import 'package:task_todo/ui/pages/me_page.dart';
 import 'package:task_todo/ui/pages/project_page.dart';
 import 'package:task_todo/ui/theme.dart';
 
@@ -347,6 +349,21 @@ class _HomePageState extends State<HomePage> {
         });
         if (index == 1) {
           await Get.to(() => const ProjectPage());
+          setState(() {
+            _selectedIndex = 0;
+          });
+        }
+        if (index == 2) {
+          await Get.to(() => const CalendarPage());
+          setState(() {
+            _selectedIndex = 0;
+          });
+        }
+        if (index == 3) {
+          await Get.to(() => const MePage());
+          setState(() {
+            _selectedIndex = 0;
+          });
         }
       },
       items: [
