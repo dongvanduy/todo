@@ -89,7 +89,7 @@ class _MePageState extends State<MePage> {
         children: [
           CircleAvatar(
             radius: 28,
-            backgroundImage: const AssetImage('images/person.jpeg'),
+            backgroundImage: const AssetImage('images/user.png'),
             backgroundColor: Colors.grey[200],
           ),
           const SizedBox(width: 14),

@@ -62,7 +62,7 @@ class MyApp extends StatelessWidget {
         Locale('en'),
         Locale('vi'),
       ],
-      title: 'Task Paven',
+      title: 'Todo List',
       debugShowCheckedModeBanner: false,
       home: hasCompletedOnboarding ? const HomePage() : const OnboardingPage(),
     );

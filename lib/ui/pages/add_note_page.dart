@@ -74,7 +74,7 @@ class _AddNotePageState extends State<AddNotePage> {
       backgroundColor: context.theme.colorScheme.background,
       actions: const [
         CircleAvatar(
-          backgroundImage: AssetImage('images/person.jpeg'),
+          backgroundImage: AssetImage('images/user.png'),
           radius: 18,
         ),
         SizedBox(

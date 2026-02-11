@@ -65,11 +65,10 @@ flutter:
   # the material Icons class.
   uses-material-design: true
   assets:
-    - images/person.jpeg
     - images/task.svg
-    - images/chatbot.svg
+    - images/chatbot.png
+    - images/user.png
     - images/list.svg
-    - images/chat.svg
     - images/process.svg
     - .env
   # To add assets to your application, add an assets section, like this:

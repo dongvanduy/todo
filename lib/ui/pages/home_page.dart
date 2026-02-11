@@ -85,24 +85,48 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildUserInfo() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             DateFormat('EEEE, d MMMM', 'vi').format(_selectedDate),
-            style: titleStyle.copyWith(fontSize: 20),
+            style: titleStyle.copyWith(fontSize: 18),
           ),
-          const Text("Hôm nay", style: TextStyle(fontSize: 14, color: Colors.grey)),
+          InkWell(
+            onTap: _jumpToToday,
+            borderRadius: BorderRadius.circular(8),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+              child: Text(
+                "Hôm nay",
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
+  void _jumpToToday() {
+    setState(() {
+      _selectedDate = DateTime.now();
+    });
+
+    // Quay wheel về đúng vị trí "Hôm nay"
+    _dateScrollController.animateToItem(
+      _initialOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
+  }
+
+
   Widget _buildDateWheelPicker() {
     return Container(
       height: 90,
-      margin: const EdgeInsets.only(top: 10),
+      margin: const EdgeInsets.only(top: 0),
       // Sử dụng RotatedBox để biến cuộn dọc thành cuộn ngang
       child: RotatedBox(
         quarterTurns: -1,
@@ -110,7 +134,7 @@ class _HomePageState extends State<HomePage> {
           controller: _dateScrollController,
           itemExtent: 70, // Độ rộng của mỗi item ngày
           perspective: 0.005, // Tạo hiệu ứng cong 3D
-          diameterRatio: 1.5, // Độ cong của vòng xoay
+          diameterRatio: 2.6, // Độ cong của vòng xoay
           physics: const FixedExtentScrollPhysics(),
           onSelectedItemChanged: (index) {
             int daysFromStart = index - _initialOffset;
@@ -293,17 +317,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildGeminiButton() {
-    return FloatingActionButton.extended(
-      heroTag: 'gemini_assistant_button',
-      onPressed: _showGeminiPromptInput,
-      backgroundColor: primaryClr,
-      icon: const Icon(Icons.auto_awesome, color: Colors.white),
-      label: const Text(
-        'Gemini',
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+    return InkWell(
+      onTap: _showGeminiPromptInput,
+      borderRadius: BorderRadius.circular(999),
+      child: Image.asset(
+        'images/chatbot.png',
+        width: 72,
+        height: 72,
       ),
     );
   }
+
 
   Future<void> _showGeminiPromptInput() async {
     if (_isGeminiSheetOpen) return;
@@ -461,7 +485,7 @@ class _HomePageState extends State<HomePage> {
           ),
           label: 'Hôm nay',
         ),
-        const BottomNavigationBarItem(icon: Icon(Icons.folder_open), label: 'Project'),
+        const BottomNavigationBarItem(icon: Icon(Icons.folder_open), label: 'Dự án'),
         const BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch'),
         const BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Của tôi'),
       ],
