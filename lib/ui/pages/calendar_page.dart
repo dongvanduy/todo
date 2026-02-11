@@ -5,7 +5,9 @@ import 'package:task_todo/services/lunar_calendar.dart';
 import 'package:task_todo/ui/theme.dart';
 
 class CalendarPage extends StatefulWidget {
-  const CalendarPage({Key? key}) : super(key: key);
+  const CalendarPage({Key? key, this.showTopBar = true}) : super(key: key);
+
+  final bool showTopBar;
 
   @override
   State<CalendarPage> createState() => _CalendarPageState();
@@ -20,12 +22,14 @@ class _CalendarPageState extends State<CalendarPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lịch'),
-        backgroundColor: theme.colorScheme.background,
-        foregroundColor: theme.colorScheme.onBackground,
-        elevation: 0,
-      ),
+      appBar: widget.showTopBar
+          ? AppBar(
+              title: const Text('Lịch'),
+              backgroundColor: theme.colorScheme.background,
+              foregroundColor: theme.colorScheme.onBackground,
+              elevation: 0,
+            )
+          : null,
       backgroundColor: context.theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: ListView(

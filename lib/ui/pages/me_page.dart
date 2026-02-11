@@ -7,7 +7,9 @@ import 'package:task_todo/ui/pages/privacy_policy_page.dart';
 import 'package:task_todo/ui/theme.dart';
 
 class MePage extends StatefulWidget {
-  const MePage({Key? key}) : super(key: key);
+  const MePage({Key? key, this.showTopBar = true}) : super(key: key);
+
+  final bool showTopBar;
 
   @override
   State<MePage> createState() => _MePageState();
@@ -29,12 +31,14 @@ class _MePageState extends State<MePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Tôi'),
-        backgroundColor: theme.colorScheme.background,
-        foregroundColor: theme.colorScheme.onBackground,
-        elevation: 0,
-      ),
+      appBar: widget.showTopBar
+          ? AppBar(
+              title: const Text('Tôi'),
+              backgroundColor: theme.colorScheme.background,
+              foregroundColor: theme.colorScheme.onBackground,
+              elevation: 0,
+            )
+          : null,
       backgroundColor: context.theme.scaffoldBackgroundColor,
       body: SafeArea(
         child: ListView(
