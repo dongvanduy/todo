@@ -8,7 +8,9 @@ import 'package:task_todo/ui/pages/add_task_page.dart';
 import 'package:task_todo/ui/theme.dart';
 
 class ProjectPage extends StatefulWidget {
-  const ProjectPage({super.key});
+  const ProjectPage({super.key, this.showTopBar = true});
+
+  final bool showTopBar;
 
   @override
   State<ProjectPage> createState() => _ProjectPageState();
@@ -38,17 +40,21 @@ class _ProjectPageState extends State<ProjectPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: Text('Projects', style: titleStyle),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios,
-              color: Get.isDarkMode ? Colors.white : Colors.black),
-          onPressed: () => Get.back(),
-        ),
-      ),
+      appBar: widget.showTopBar
+          ? AppBar(
+              title: Text('Projects', style: titleStyle),
+              centerTitle: true,
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              leading: IconButton(
+                icon: Icon(
+                  Icons.arrow_back_ios,
+                  color: Get.isDarkMode ? Colors.white : Colors.black,
+                ),
+                onPressed: () => Get.back(),
+              ),
+            )
+          : null,
       body: Obx(() {
         final projects = _projectController.projectList;
         if (projects.isEmpty) {
