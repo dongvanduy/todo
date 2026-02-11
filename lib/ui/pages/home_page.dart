@@ -51,7 +51,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final tabs = [
       _buildTodayTab(),
-      const ProjectPage(showTopBar: false),
+      const ProjectPage(showTopBar: false, showFloatingActionButton: false),
       const CalendarPage(showTopBar: false),
       const MePage(showTopBar: false),
     ];
