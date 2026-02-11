@@ -8,9 +8,14 @@ import 'package:task_todo/ui/pages/add_task_page.dart';
 import 'package:task_todo/ui/theme.dart';
 
 class ProjectPage extends StatefulWidget {
-  const ProjectPage({super.key, this.showTopBar = true});
+  const ProjectPage({
+    super.key,
+    this.showTopBar = true,
+    this.showFloatingActionButton = true,
+  });
 
   final bool showTopBar;
+  final bool showFloatingActionButton;
 
   @override
   State<ProjectPage> createState() => _ProjectPageState();
@@ -55,38 +60,43 @@ class _ProjectPageState extends State<ProjectPage> {
               ),
             )
           : null,
-      body: Obx(() {
-        final projects = _projectController.projectList;
-        if (projects.isEmpty) {
-          return Center(
-            child: Text(
-              'Chưa có project nào. Tạo project mới để bắt đầu.',
-              style: subTitleStyle,
-            ),
-          );
-        }
-
-        return ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          itemCount: projects.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 12),
-          itemBuilder: (context, index) {
-            final project = projects[index];
-            return _ProjectCard(
-              project: project,
-              taskController: _taskController,
-              onEditProject: () => _showEditProjectDialog(project),
-              onDeleteProject: () => _confirmDeleteProject(project),
-              onAddTask: () => _openAddTask(project.name),
+      body: SafeArea(
+        top: !widget.showTopBar,
+        child: Obx(() {
+          final projects = _projectController.projectList;
+          if (projects.isEmpty) {
+            return Center(
+              child: Text(
+                'Chưa có project nào. Tạo project mới để bắt đầu.',
+                style: subTitleStyle,
+              ),
             );
-          },
-        );
-      }),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateProjectDialog,
-        backgroundColor: primaryClr,
-        child: const Icon(Icons.add),
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            itemCount: projects.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final project = projects[index];
+              return _ProjectCard(
+                project: project,
+                taskController: _taskController,
+                onEditProject: () => _showEditProjectDialog(project),
+                onDeleteProject: () => _confirmDeleteProject(project),
+                onAddTask: () => _openAddTask(project.name),
+              );
+            },
+          );
+        }),
       ),
+      floatingActionButton: widget.showFloatingActionButton
+          ? FloatingActionButton(
+              onPressed: _showCreateProjectDialog,
+              backgroundColor: primaryClr,
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 
