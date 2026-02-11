@@ -63,14 +63,17 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildTodayTab() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildUserInfo(),
-        _buildDateWheelPicker(), // Thanh ngày tháng xoay tròn
-        const SizedBox(height: 10),
-        _buildTasksList(), // Danh sách Timeline dọc
-      ],
+    return SafeArea(
+      bottom: false,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildUserInfo(),
+          _buildDateWheelPicker(), // Thanh ngày tháng xoay tròn
+          const SizedBox(height: 10),
+          _buildTasksList(), // Danh sách Timeline dọc
+        ],
+      ),
     );
   }
 
@@ -79,24 +82,14 @@ class _HomePageState extends State<HomePage> {
   Widget _buildUserInfo() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                DateFormat('EEEE, d MMMM', 'vi').format(_selectedDate),
-                style: titleStyle.copyWith(fontSize: 20),
-              ),
-              const Text("Hôm nay", style: TextStyle(fontSize: 14, color: Colors.grey)),
-            ],
+          Text(
+            DateFormat('EEEE, d MMMM', 'vi').format(_selectedDate),
+            style: titleStyle.copyWith(fontSize: 20),
           ),
-          CircleAvatar(
-            radius: 24,
-            backgroundImage: const AssetImage('images/person.jpeg'),
-            backgroundColor: Colors.grey[200],
-          )
+          const Text("Hôm nay", style: TextStyle(fontSize: 14, color: Colors.grey)),
         ],
       ),
     );
