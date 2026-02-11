@@ -7,6 +7,7 @@ import 'package:task_todo/services/theme_services.dart';
 import 'package:task_todo/ui/pages/home_page.dart';
 import 'package:task_todo/ui/pages/onboarding_page.dart';
 import 'package:task_todo/ui/theme.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'db/db_helper.dart';
@@ -17,6 +18,7 @@ void main() async {
   await initializeDateFormatting();
   await DBHelper.initDb();
   await GetStorage.init();
+  await dotenv.load(fileName: '.env');
   final savedLocaleCode = GetStorage().read<String>('language_code');
   final deviceLocaleCode = Get.deviceLocale?.languageCode;
 
