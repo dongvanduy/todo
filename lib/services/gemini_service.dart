@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:intl/intl.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import '../models/task.dart';
 
@@ -27,8 +28,14 @@ class GeminiService {
     _apiKey = (apiKey ?? _keyStore.read() ?? _fallbackApiKey).trim();
   }
 
-  static const String _fallbackApiKey =
-      String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+  static String get _fallbackApiKey {
+    final envValue = dotenv.env['GEMINI_API_KEY'];
+    if (envValue != null && envValue.trim().isNotEmpty) {
+      return envValue.trim();
+    }
+
+    return const String.fromEnvironment('GEMINI_API_KEY', defaultValue: '');
+  }
 
   final GeminiKeyStore _keyStore;
   late String _apiKey;
