@@ -53,7 +53,9 @@ class _GeminiMessageStore {
 }
 
 class GeminiAssistantPage extends StatefulWidget {
-  const GeminiAssistantPage({super.key});
+  const GeminiAssistantPage({super.key, this.initialPrompt});
+
+  final String? initialPrompt;
 
   @override
   State<GeminiAssistantPage> createState() => _GeminiAssistantPageState();
@@ -79,6 +81,9 @@ class _GeminiAssistantPageState extends State<GeminiAssistantPage> {
     _taskController.getTasks();
     _apiKeyController.text = _geminiService.storedApiKey ?? '';
     _restoreMessages();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _sendInitialPromptIfNeeded();
+    });
   }
 
   @override
@@ -242,6 +247,15 @@ class _GeminiAssistantPageState extends State<GeminiAssistantPage> {
     await _addMessage(AssistantMessage(text: reply, isUser: false));
     _isSending.value = false;
     await _scrollToBottom();
+  }
+
+  Future<void> _sendInitialPromptIfNeeded() async {
+    final initialPrompt = widget.initialPrompt?.trim();
+    if (initialPrompt == null || initialPrompt.isEmpty || _isSending.value) {
+      return;
+    }
+    _inputController.text = initialPrompt;
+    await _sendMessage();
   }
 
   Future<void> _requestWeeklySummary() async {

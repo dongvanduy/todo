@@ -6,6 +6,7 @@ import 'package:task_todo/models/task.dart';
 import 'package:task_todo/services/notification_services.dart';
 import 'package:task_todo/ui/pages/add_task_page.dart';
 import 'package:task_todo/ui/pages/calendar_page.dart';
+import 'package:task_todo/ui/pages/assistant_page.dart';
 import 'package:task_todo/ui/pages/me_page.dart';
 import 'package:task_todo/ui/pages/project_page.dart';
 import 'package:task_todo/ui/theme.dart';
@@ -58,6 +59,8 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: context.theme.scaffoldBackgroundColor,
       body: IndexedStack(index: _selectedIndex, children: tabs),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: _buildGeminiButton(),
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }
@@ -284,6 +287,88 @@ class _HomePageState extends State<HomePage> {
                 : titleStyle.copyWith(color: Colors.white),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildGeminiButton() {
+    return FloatingActionButton.extended(
+      heroTag: 'gemini_assistant_button',
+      onPressed: _showGeminiPromptInput,
+      backgroundColor: primaryClr,
+      icon: const Icon(Icons.auto_awesome, color: Colors.white),
+      label: const Text(
+        'Gemini',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Future<void> _showGeminiPromptInput() async {
+    final promptController = TextEditingController();
+
+    final prompt = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Get.isDarkMode ? darkHeaderClr : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.only(
+            left: 16,
+            right: 16,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Hỏi Gemini',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: promptController,
+                autofocus: true,
+                minLines: 2,
+                maxLines: 5,
+                decoration: InputDecoration(
+                  hintText: 'Nhập câu hỏi của bạn...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                onSubmitted: (value) => Navigator.of(context).pop(value),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(backgroundColor: primaryClr),
+                  onPressed: () => Navigator.of(context).pop(promptController.text),
+                  icon: const Icon(Icons.send, color: Colors.white),
+                  label: const Text('Gửi tới Gemini', style: TextStyle(color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    promptController.dispose();
+
+    if (!mounted) return;
+
+    final cleanedPrompt = prompt?.trim() ?? '';
+    await Get.to(
+      () => GeminiAssistantPage(
+        initialPrompt: cleanedPrompt.isEmpty ? null : cleanedPrompt,
       ),
     );
   }
