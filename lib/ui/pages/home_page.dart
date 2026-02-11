@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:task_todo/controllers/task_controller.dart';
 import 'package:task_todo/models/task.dart';
 import 'package:task_todo/services/notification_services.dart';
-import 'package:task_todo/services/theme_services.dart';
 import 'package:task_todo/ui/pages/add_task_page.dart';
 import 'package:task_todo/ui/pages/calendar_page.dart';
 import 'package:task_todo/ui/pages/me_page.dart';
@@ -49,51 +48,33 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final tabs = [
+      _buildTodayTab(),
+      const ProjectPage(showTopBar: false),
+      const CalendarPage(showTopBar: false),
+      const MePage(showTopBar: false),
+    ];
+
     return Scaffold(
       backgroundColor: context.theme.scaffoldBackgroundColor,
-      appBar: _buildAppBar(),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildUserInfo(),
-          _buildDateWheelPicker(), // Thanh ngày tháng xoay tròn
-          const SizedBox(height: 10),
-          _buildTasksList(),       // Danh sách Timeline dọc
-        ],
-      ),
+      body: IndexedStack(index: _selectedIndex, children: tabs),
       bottomNavigationBar: _buildBottomNavBar(),
     );
   }
 
-  // --- WIDGETS CON ---
-
-  AppBar _buildAppBar() {
-    return AppBar(
-      title: Text(
-          'Taskito',
-          style: TextStyle(
-              color: Get.isDarkMode ? Colors.white : Colors.black,
-              fontWeight: FontWeight.bold
-          )
-      ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      actions: [
-        IconButton(
-            icon: Icon(Icons.search, color: Get.isDarkMode ? Colors.white : Colors.black),
-            onPressed: () {}),
-        IconButton(
-            icon: Icon(Icons.nightlight_round, color: Get.isDarkMode ? Colors.white : Colors.black),
-            onPressed: () {
-              ThemeServices().switchTheme();
-            }),
+  Widget _buildTodayTab() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildUserInfo(),
+        _buildDateWheelPicker(), // Thanh ngày tháng xoay tròn
+        const SizedBox(height: 10),
+        _buildTasksList(), // Danh sách Timeline dọc
       ],
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios, color: Get.isDarkMode ? Colors.white : Colors.black),
-        onPressed: () => Get.back(),
-      ),
     );
   }
+
+  // --- WIDGETS CON ---
 
   Widget _buildUserInfo() {
     return Padding(
@@ -343,28 +324,10 @@ class _HomePageState extends State<HomePage> {
       showSelectedLabels: true,
       showUnselectedLabels: true,
       currentIndex: _selectedIndex,
-      onTap: (index) async {
+      onTap: (index) {
         setState(() {
           _selectedIndex = index;
         });
-        if (index == 1) {
-          await Get.to(() => const ProjectPage());
-          setState(() {
-            _selectedIndex = 0;
-          });
-        }
-        if (index == 2) {
-          await Get.to(() => const CalendarPage());
-          setState(() {
-            _selectedIndex = 0;
-          });
-        }
-        if (index == 3) {
-          await Get.to(() => const MePage());
-          setState(() {
-            _selectedIndex = 0;
-          });
-        }
       },
       items: [
         BottomNavigationBarItem(
