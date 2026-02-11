@@ -23,6 +23,7 @@ class _HomePageState extends State<HomePage> {
   final TaskController _taskController = Get.put(TaskController());
   late NotifyHelper notifyHelper;
   int _selectedIndex = 0;
+  bool _isGeminiSheetOpen = false;
 
   // Controller cho hiệu ứng xoay tròn ngày tháng
   late FixedExtentScrollController _dateScrollController;
@@ -305,72 +306,116 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _showGeminiPromptInput() async {
-    final promptController = TextEditingController();
+    if (_isGeminiSheetOpen) return;
+    _isGeminiSheetOpen = true;
 
-    final prompt = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Get.isDarkMode ? darkHeaderClr : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 16,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Hỏi Gemini',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: promptController,
-                autofocus: true,
-                minLines: 2,
-                maxLines: 5,
-                decoration: InputDecoration(
-                  hintText: 'Nhập câu hỏi của bạn...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+    try {
+      String draftPrompt = '';
+      final prompt = await showModalBottomSheet<String>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        backgroundColor: Colors.transparent,
+        builder: (modalContext) {
+          return StatefulBuilder(
+            builder: (context, setModalState) {
+              return AnimatedPadding(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                ),
+                child: Material(
+                  color: Get.isDarkMode ? darkHeaderClr : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                  child: SafeArea(
+                    top: false,
+                    child: SingleChildScrollView(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Hỏi Gemini',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              autofocus: true,
+                              minLines: 2,
+                              maxLines: 5,
+                              onChanged: (value) {
+                                setModalState(() {
+                                  draftPrompt = value;
+                                });
+                              },
+                              onSubmitted: (value) {
+                                final cleaned = value.trim();
+                                Navigator.of(modalContext).pop(cleaned.isEmpty ? null : cleaned);
+                              },
+                              decoration: InputDecoration(
+                                hintText: 'Nhập câu hỏi của bạn...',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => Navigator.of(modalContext).pop(''),
+                                    child: const Text('Mở Gemini'),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(backgroundColor: primaryClr),
+                                    onPressed: () {
+                                      final cleaned = draftPrompt.trim();
+                                      Navigator.of(modalContext).pop(cleaned.isEmpty ? null : cleaned);
+                                    },
+                                    icon: const Icon(Icons.send, color: Colors.white),
+                                    label: const Text(
+                                      'Gửi câu hỏi',
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                onSubmitted: (value) => Navigator.of(context).pop(value),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: primaryClr),
-                  onPressed: () => Navigator.of(context).pop(promptController.text),
-                  icon: const Icon(Icons.send, color: Colors.white),
-                  label: const Text('Gửi tới Gemini', style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+              );
+            },
+          );
+        },
+      );
 
-    promptController.dispose();
+      if (!mounted || prompt == null) return;
 
-    if (!mounted) return;
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+      if (!mounted) return;
 
-    final cleanedPrompt = prompt?.trim() ?? '';
-    await Get.to(
-      () => GeminiAssistantPage(
-        initialPrompt: cleanedPrompt.isEmpty ? null : cleanedPrompt,
-      ),
-    );
+      final cleanedPrompt = prompt.trim();
+      await Get.to(
+        () => GeminiAssistantPage(
+          initialPrompt: cleanedPrompt.isEmpty ? null : cleanedPrompt,
+        ),
+      );
+    } finally {
+      _isGeminiSheetOpen = false;
+    }
   }
 
   Widget _buildNoTaskWidget() {
