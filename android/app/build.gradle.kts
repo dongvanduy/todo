@@ -1,9 +1,17 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
+// Load keystore properties
+val keystoreProperties = Properties().apply {
+    load(FileInputStream(rootProject.file("key.properties")))
+}
+
 
 android {
     namespace = "com.jayden.productivity.tasks"
@@ -31,11 +39,25 @@ android {
         versionName = flutter.versionName
     }
 
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(keystoreProperties.getProperty("storeFile"))
+            storePassword = keystoreProperties.getProperty("storePassword")
+            keyAlias = keystoreProperties.getProperty("keyAlias")
+            keyPassword = keystoreProperties.getProperty("keyPassword")
+        }
+    }
+
     buildTypes {
-        release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+        getByName("release") {
+            // Dùng keystore release, KHÔNG dùng debug nữa
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false       // nếu sau này muốn bật R8 thì chỉnh ở đây
+            isShrinkResources = false
+        }
+        getByName("debug") {
+            // giữ nguyên debug mặc định
         }
     }
 }
