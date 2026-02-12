@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:extension_google_sign_in_as_googleapis_auth/extension_google_sign_in_as_googleapis_auth.dart';
+import 'package:get/get.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:googleapis/drive/v3.dart';
 import 'package:intl/intl.dart';
@@ -44,7 +45,7 @@ class GoogleDriveBackupService {
       );
     }
 
-    return 'Đã sao lưu lúc ${DateFormat('HH:mm, dd/MM/yyyy').format(DateTime.now())}';
+    return 'backup_done_at'.trParams({'time': DateFormat('HH:mm, dd/MM/yyyy').format(DateTime.now())});
   }
 
   Future<String> restoreLatestBackup() async {
@@ -53,7 +54,7 @@ class GoogleDriveBackupService {
 
     final backupFile = await _findLatestBackupFile(drive);
     if (backupFile?.id == null) {
-      throw Exception('Không tìm thấy bản sao lưu trên Google Drive.');
+      throw Exception('backup_not_found'.tr);
     }
 
     final media = await drive.files.get(
@@ -62,7 +63,7 @@ class GoogleDriveBackupService {
     );
 
     if (media is! Media) {
-      throw Exception('Không đọc được dữ liệu sao lưu từ Google Drive.');
+      throw Exception('backup_unreadable'.tr);
     }
 
     final chunks = await media.stream.toList();
@@ -71,16 +72,16 @@ class GoogleDriveBackupService {
     final dynamic decoded = jsonDecode(rawJson);
 
     if (decoded is! Map<String, dynamic>) {
-      throw Exception('Định dạng dữ liệu sao lưu không hợp lệ.');
+      throw Exception('backup_invalid'.tr);
     }
 
     await DBHelper.restoreData(decoded);
 
     final modifiedAt = backupFile.modifiedTime?.toLocal();
     if (modifiedAt != null) {
-      return 'Đã khôi phục bản sao lưu lúc ${DateFormat('HH:mm, dd/MM/yyyy').format(modifiedAt)}';
+      return 'restore_done_at'.trParams({'time': DateFormat('HH:mm, dd/MM/yyyy').format(modifiedAt)});
     }
-    return 'Đã khôi phục thành công từ Google Drive.';
+    return 'restore_done'.tr;
   }
 
   Future<File?> _findLatestBackupFile(DriveApi drive) async {
@@ -106,7 +107,7 @@ class GoogleDriveBackupService {
 
     final client = await _googleSignIn.authenticatedClient();
     if (client == null) {
-      throw Exception('Không thể đăng nhập Google. Vui lòng thử lại.');
+      throw Exception('google_login_failed'.tr);
     }
     return client;
   }

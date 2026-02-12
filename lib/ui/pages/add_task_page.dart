@@ -91,18 +91,18 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 child: Column(
                   children: [
                     InputField(
-                      title: 'Title',
-                      hint: 'Enter title here',
+                      title: 'field_title'.tr,
+                      hint: 'field_title_hint'.tr,
                       controller: _titleController,
                     ),
                     InputField(
-                      title: 'Note',
-                      hint: 'Enter note here',
+                      title: 'field_note'.tr,
+                      hint: 'field_note_hint'.tr,
                       controller: _noteController,
                     ),
                     InputField(
-                      title: 'Project',
-                      hint: 'Enter or choose a project',
+                      title: 'field_project'.tr,
+                      hint: 'field_project_hint'.tr,
                       controller: _projectNameController,
                     ),
                     _projectDropdown(),
@@ -114,7 +114,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 child: Column(
                   children: [
                     InputField(
-                      title: 'Date',
+                      title: 'field_date'.tr,
                       hint: DateFormat.yMd().format(_selectedDate),
                       widget: IconButton(
                         onPressed: _getDateFromUser,
@@ -126,7 +126,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                       children: [
                         Expanded(
                           child: InputField(
-                            title: 'Start Time',
+                            title: 'field_start_time'.tr,
                             hint: _startTime,
                             widget: IconButton(
                               onPressed: () =>
@@ -139,7 +139,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                         const SizedBox(width: 12),
                         Expanded(
                           child: InputField(
-                            title: 'End Time',
+                            title: 'field_end_time'.tr,
                             hint: _endTime,
                             widget: IconButton(
                               onPressed: () =>
@@ -153,18 +153,29 @@ class _AddTaskPageState extends State<AddTaskPage> {
                     ),
                     const SizedBox(height: 10),
                     _modernSelector<int>(
-                      label: 'Remind',
+                      label: 'field_remind'.tr,
                       value: _selectedRemind,
                       items: remindList,
-                      display: (value) => '$value phút',
+                      display: (value) => '$value ${'minutes_short'.tr}',
                       onChanged: (value) => setState(() => _selectedRemind = value),
                     ),
                     const SizedBox(height: 12),
                     _modernSelector<String>(
-                      label: 'Repeat',
+                      label: 'field_repeat'.tr,
                       value: _selectedRepeat,
                       items: repeatList,
-                      display: (value) => value,
+                      display: (value) {
+                        switch (value) {
+                          case 'Daily':
+                            return 'repeat_daily'.tr;
+                          case 'Weekly':
+                            return 'repeat_weekly'.tr;
+                          case 'Monthly':
+                            return 'repeat_monthly'.tr;
+                          default:
+                            return 'repeat_none'.tr;
+                        }
+                      },
                       onChanged: (value) => setState(() => _selectedRepeat = value),
                     ),
                   ],
@@ -178,7 +189,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                   children: [
                     _colorPalette(),
                     MyButton(
-                      label: isEditMode ? 'Save Task' : 'Create Task',
+                      label: isEditMode ? 'save_task_button'.tr : 'create_task_button'.tr,
                       onTap: _validateData,
                     ),
                   ],
@@ -205,12 +216,12 @@ class _AddTaskPageState extends State<AddTaskPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            isEditMode ? 'Edit Task' : 'Add Task',
+            isEditMode ? 'edit_task_title'.tr : 'add_task_title'.tr,
             style: headingStyle.copyWith(color: Colors.white),
           ),
           const SizedBox(height: 4),
           Text(
-            'Tối ưu ngày làm việc của bạn với lịch trình rõ ràng.',
+            'task_form_header_desc'.tr,
             style: subTitleStyle.copyWith(color: Colors.white70),
           ),
         ],
@@ -262,7 +273,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
         child: DropdownButtonHideUnderline(
           child: DropdownButton<String>(
             value: currentSelection,
-            hint: Text('Select existing project', style: subTitleStyle),
+            hint: Text('field_project_select'.tr, style: subTitleStyle),
             isExpanded: true,
             items: projectOptions
                 .map(
@@ -330,7 +341,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
       elevation: 0,
       backgroundColor: context.theme.colorScheme.background,
       centerTitle: true,
-      title: Text(isEditMode ? 'Edit task' : 'Create task', style: titleStyle),
+      title: Text(isEditMode ? 'edit_task_nav_title'.tr : 'create_task_title'.tr, style: titleStyle),
     );
   }
 
@@ -339,8 +350,8 @@ class _AddTaskPageState extends State<AddTaskPage> {
       _saveTask();
     } else {
       Get.snackbar(
-        'required',
-        'All fields are required!',
+        'required'.tr,
+        'all_fields_required'.tr,
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.white,
         colorText: pinkClr,
@@ -398,7 +409,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
       Get.back(result: true);
     } catch (e) {
       Get.snackbar(
-        'Error',
+        'error'.tr,
         e.toString(),
         snackPosition: SnackPosition.BOTTOM,
       );
@@ -409,7 +420,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Color', style: titleStyle),
+        Text('field_color'.tr, style: titleStyle),
         const SizedBox(height: 8),
         Wrap(
           children: List<Widget>.generate(
