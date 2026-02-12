@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:task_todo/controllers/project_controller.dart';
+import 'package:task_todo/controllers/task_controller.dart';
+import 'package:task_todo/services/google_drive_backup_service.dart';
 import 'package:task_todo/services/theme_services.dart';
 import 'package:task_todo/ui/pages/privacy_policy_page.dart';
 import 'package:task_todo/ui/theme.dart';
@@ -17,6 +20,7 @@ class MePage extends StatefulWidget {
 
 class _MePageState extends State<MePage> {
   final _settingsBox = GetStorage();
+  final _backupService = GoogleDriveBackupService();
   late String _languageCode;
 
   @override
@@ -155,14 +159,7 @@ class _MePageState extends State<MePage> {
       title: const Text('Sao lưu Google Drive'),
       subtitle: const Text('Đồng bộ và lưu trữ dữ liệu'),
       trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        Get.snackbar(
-          'Sao lưu',
-          'Tính năng đang được phát triển.',
-          snackPosition: SnackPosition.BOTTOM,
-          margin: const EdgeInsets.all(16),
-        );
-      },
+      onTap: _showBackupSheet,
     );
   }
 
@@ -186,6 +183,119 @@ class _MePageState extends State<MePage> {
         );
       },
     );
+  }
+
+  void _showBackupSheet() {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: BoxDecoration(
+          color: context.theme.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Google Drive', style: titleStyle),
+              const SizedBox(height: 8),
+              Text(
+                'Sao lưu hoặc khôi phục dữ liệu nhiệm vụ của bạn.',
+                style: bodyStyle.copyWith(color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.cloud_upload_rounded, color: primaryClr),
+                title: const Text('Sao lưu ngay'),
+                subtitle: const Text('Tải dữ liệu hiện tại lên Google Drive'),
+                onTap: () {
+                  Get.back();
+                  _runBackup();
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.restore_rounded, color: primaryClr),
+                title: const Text('Khôi phục từ Drive'),
+                subtitle: const Text('Ghi đè dữ liệu cục bộ bằng bản sao lưu mới nhất'),
+                onTap: () {
+                  Get.back();
+                  _runRestore();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Future<void> _runBackup() async {
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+    try {
+      final message = await _backupService.backupToDrive();
+      Get.back();
+      Get.snackbar(
+        'Sao lưu thành công',
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    } catch (e) {
+      Get.back();
+      Get.snackbar(
+        'Không thể sao lưu',
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    }
+  }
+
+  Future<void> _runRestore() async {
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+    try {
+      final message = await _backupService.restoreLatestBackup();
+      if (Get.isRegistered<TaskController>()) {
+        await Get.find<TaskController>().getTasks();
+      }
+      if (Get.isRegistered<ProjectController>()) {
+        await Get.find<ProjectController>().getProjects();
+      }
+      Get.back();
+      Get.snackbar(
+        'Khôi phục thành công',
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    } catch (e) {
+      Get.back();
+      Get.snackbar(
+        'Không thể khôi phục',
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    }
   }
 
   void _showLanguageSheet() {
