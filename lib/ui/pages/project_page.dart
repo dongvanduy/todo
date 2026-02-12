@@ -64,29 +64,53 @@ class _ProjectPageState extends State<ProjectPage> {
         top: !widget.showTopBar,
         child: Obx(() {
           final projects = _projectController.projectList;
-          if (projects.isEmpty) {
-            return Center(
-              child: Text(
-                'Chưa có project nào. Tạo project mới để bắt đầu.',
-                style: subTitleStyle,
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _showCreateProjectDialog,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryClr,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Tạo project mới'),
+                  ),
+                ),
               ),
-            );
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            itemCount: projects.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final project = projects[index];
-              return _ProjectCard(
-                project: project,
-                taskController: _taskController,
-                onEditProject: () => _showEditProjectDialog(project),
-                onDeleteProject: () => _confirmDeleteProject(project),
-                onAddTask: () => _openAddTask(project.name),
-              );
-            },
+              Expanded(
+                child: projects.isEmpty
+                    ? Center(
+                        child: Text(
+                          'Chưa có project nào. Tạo project mới để bắt đầu.',
+                          style: subTitleStyle,
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        itemCount: projects.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final project = projects[index];
+                          return _ProjectCard(
+                            project: project,
+                            taskController: _taskController,
+                            onEditProject: () => _showEditProjectDialog(project),
+                            onDeleteProject: () => _confirmDeleteProject(project),
+                            onAddTask: () => _openAddTask(project.name),
+                          );
+                        },
+                      ),
+              ),
+            ],
           );
         }),
       ),
