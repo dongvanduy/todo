@@ -25,6 +25,8 @@ class _HomePageState extends State<HomePage> {
   int _selectedIndex = 0;
   bool _isGeminiSheetOpen = false;
 
+  String get _localeCode => Get.locale?.languageCode ?? 'vi';
+
   // Controller cho hiệu ứng xoay tròn ngày tháng
   late FixedExtentScrollController _dateScrollController;
   final int _daysRange = 365 * 2; // Cho phép chọn trong vòng 2 năm
@@ -38,7 +40,7 @@ class _HomePageState extends State<HomePage> {
     notifyHelper.requestIOSPermissions();
     _taskController.getTasks();
 
-    // Khởi tạo controller ngày ở vị trí "Hôm nay"
+    // Khởi tạo controller ngày ở vị trí 'today_label'.tr
     _dateScrollController = FixedExtentScrollController(initialItem: _initialOffset);
   }
 
@@ -90,17 +92,17 @@ class _HomePageState extends State<HomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            DateFormat('EEEE, d MMMM', 'vi').format(_selectedDate),
+            DateFormat('EEEE, d MMMM', _localeCode).format(_selectedDate),
             style: titleStyle.copyWith(fontSize: 18),
           ),
           InkWell(
             onTap: _jumpToToday,
             borderRadius: BorderRadius.circular(8),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
               child: Text(
-                "Hôm nay",
-                style: TextStyle(fontSize: 14, color: Colors.grey),
+                'today_label'.tr,
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
               ),
             ),
           ),
@@ -114,7 +116,7 @@ class _HomePageState extends State<HomePage> {
       _selectedDate = DateTime.now();
     });
 
-    // Quay wheel về đúng vị trí "Hôm nay"
+    // Quay wheel về đúng vị trí 'today_label'.tr
     _dateScrollController.animateToItem(
       _initialOffset,
       duration: const Duration(milliseconds: 300),
@@ -179,7 +181,7 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
-            DateFormat('E', 'vi').format(date).toUpperCase(),
+            DateFormat('E', _localeCode).format(date).toUpperCase(),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.bold,
@@ -257,7 +259,7 @@ class _HomePageState extends State<HomePage> {
             task.isCompleted == 1
                 ? Container()
                 : _buildBottomSheetButton(
-              label: "Hoàn thành",
+              label: 'task_completed'.tr,
               onTap: () {
                 _taskController.markTaskAsCompleted(task.id!);
                 Get.back();
@@ -265,7 +267,7 @@ class _HomePageState extends State<HomePage> {
               clr: primaryClr,
             ),
             _buildBottomSheetButton(
-                label: "Xóa công việc",
+                label: 'delete_task'.tr,
                 onTap: () {
                   _taskController.deleteTasks(task);
                   Get.back();
@@ -273,7 +275,7 @@ class _HomePageState extends State<HomePage> {
                 clr: Colors.red[300]!),
             const SizedBox(height: 20),
             _buildBottomSheetButton(
-                label: "Đóng",
+                label: 'cancel'.tr,
                 onTap: () => Get.back(),
                 clr: Colors.white,
                 isClose: true),
@@ -363,9 +365,9 @@ class _HomePageState extends State<HomePage> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Hỏi Gemini',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            Text(
+                              'ask_gemini'.tr,
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 12),
                             TextField(
@@ -382,7 +384,7 @@ class _HomePageState extends State<HomePage> {
                                 Navigator.of(modalContext).pop(cleaned.isEmpty ? null : cleaned);
                               },
                               decoration: InputDecoration(
-                                hintText: 'Nhập câu hỏi của bạn...',
+                                hintText: 'gemini_hint'.tr,
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
@@ -394,7 +396,7 @@ class _HomePageState extends State<HomePage> {
                                 Expanded(
                                   child: OutlinedButton(
                                     onPressed: () => Navigator.of(modalContext).pop(''),
-                                    child: const Text('Mở Gemini'),
+                                    child: Text('open_gemini'.tr),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -406,9 +408,9 @@ class _HomePageState extends State<HomePage> {
                                       Navigator.of(modalContext).pop(cleaned.isEmpty ? null : cleaned);
                                     },
                                     icon: const Icon(Icons.send, color: Colors.white),
-                                    label: const Text(
-                                      'Gửi câu hỏi',
-                                      style: TextStyle(color: Colors.white),
+                                    label: Text(
+                                      'send_question'.tr,
+                                      style: const TextStyle(color: Colors.white),
                                     ),
                                   ),
                                 ),
@@ -449,10 +451,10 @@ class _HomePageState extends State<HomePage> {
         children: [
           const Icon(Icons.task, size: 80, color: Colors.grey),
           const SizedBox(height: 10),
-          const Text("Không có việc gì hôm nay!", style: TextStyle(color: Colors.grey)),
+          Text('no_tasks_today'.tr, style: const TextStyle(color: Colors.grey)),
           const SizedBox(height: 20),
           AddTaskButton( // Đây là class bạn bị thiếu trước đó
-              label: 'Thêm nhiệm vụ',
+              label: 'add_task'.tr,
               onTap: () async {
                 await Get.to(() => const AddTaskPage());
                 _taskController.getTasks();
@@ -483,11 +485,11 @@ class _HomePageState extends State<HomePage> {
             decoration: BoxDecoration(color: primaryClr.withOpacity(0.1), shape: BoxShape.circle),
             child: const Icon(Icons.access_time_filled),
           ),
-          label: 'Hôm nay',
+          label: 'today_label'.tr,
         ),
-        const BottomNavigationBarItem(icon: Icon(Icons.folder_open), label: 'Dự án'),
-        const BottomNavigationBarItem(icon: Icon(Icons.calendar_month), label: 'Lịch'),
-        const BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Của tôi'),
+        BottomNavigationBarItem(icon: const Icon(Icons.folder_open), label: 'projects_tab'.tr),
+        BottomNavigationBarItem(icon: const Icon(Icons.calendar_month), label: 'calendar_tab'.tr),
+        BottomNavigationBarItem(icon: const Icon(Icons.person_outline), label: 'me_tab'.tr),
       ],
     );
   }
@@ -681,10 +683,10 @@ class AddTaskButtonTimeline extends StatelessWidget {
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.add, color: Colors.grey),
-              SizedBox(width: 8),
-              Text("Thêm nhiệm vụ mới", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            children: [
+              const Icon(Icons.add, color: Colors.grey),
+              const SizedBox(width: 8),
+              Text('add_task_new'.tr, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
             ],
           ),
         ),

@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:task_todo/controllers/project_controller.dart';
+import 'package:task_todo/controllers/task_controller.dart';
+import 'package:task_todo/services/google_drive_backup_service.dart';
 import 'package:task_todo/services/theme_services.dart';
 import 'package:task_todo/ui/pages/privacy_policy_page.dart';
 import 'package:task_todo/ui/theme.dart';
@@ -17,6 +20,7 @@ class MePage extends StatefulWidget {
 
 class _MePageState extends State<MePage> {
   final _settingsBox = GetStorage();
+  final _backupService = GoogleDriveBackupService();
   late String _languageCode;
 
   @override
@@ -33,7 +37,7 @@ class _MePageState extends State<MePage> {
     return Scaffold(
       appBar: widget.showTopBar
           ? AppBar(
-              title: const Text('Tôi'),
+              title: Text('me_title'.tr),
               backgroundColor: theme.colorScheme.background,
               foregroundColor: theme.colorScheme.onBackground,
               elevation: 0,
@@ -46,24 +50,24 @@ class _MePageState extends State<MePage> {
           children: [
             _buildProfileCard(theme),
             const SizedBox(height: 16),
-            Text('Cài đặt', style: titleStyle),
+            Text('settings'.tr, style: titleStyle),
             const SizedBox(height: 8),
             _buildDarkModeTile(),
             _buildLanguageTile(),
             _buildPrivacyTile(),
             _buildBackupTile(),
             const SizedBox(height: 20),
-            Text('Hỗ trợ', style: titleStyle),
+            Text('support'.tr, style: titleStyle),
             const SizedBox(height: 8),
             _buildSupportTile(
               icon: Icons.help_outline,
-              title: 'Trung tâm trợ giúp',
-              subtitle: 'Câu hỏi thường gặp và liên hệ hỗ trợ',
+              title: 'help_center'.tr,
+              subtitle: 'help_center_subtitle'.tr,
             ),
             _buildSupportTile(
               icon: Icons.star_outline,
-              title: 'Đánh giá ứng dụng',
-              subtitle: 'Chia sẻ cảm nhận của bạn',
+              title: 'rate_app'.tr,
+              subtitle: 'rate_app_subtitle'.tr,
             ),
           ],
         ),
@@ -100,7 +104,7 @@ class _MePageState extends State<MePage> {
                 Text('Jayden', style: subHeadingStyle),
                 const SizedBox(height: 4),
                 Text(
-                  'Quản lý lịch trình của bạn mỗi ngày',
+                  'account_settings_subtitle'.tr,
                   style: bodyStyle.copyWith(color: Colors.grey),
                 ),
               ],
@@ -115,8 +119,8 @@ class _MePageState extends State<MePage> {
   Widget _buildDarkModeTile() {
     return SwitchListTile(
       contentPadding: EdgeInsets.zero,
-      title: const Text('Chế độ tối'),
-      subtitle: const Text('Bật/tắt giao diện tối'),
+      title: Text('dark_mode'.tr),
+      subtitle: Text('dark_mode_subtitle'.tr),
       secondary: Icon(Icons.dark_mode_outlined, color: primaryClr),
       value: Get.isDarkMode,
       onChanged: (value) {
@@ -130,8 +134,8 @@ class _MePageState extends State<MePage> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(Icons.language, color: primaryClr),
-      title: const Text('Ngôn ngữ'),
-      subtitle: Text(_languageCode == 'vi' ? 'Tiếng Việt' : 'English'),
+      title: Text('language'.tr),
+      subtitle: Text(_languageCode == 'vi' ? 'language_vi'.tr : 'language_en'.tr),
       trailing: const Icon(Icons.chevron_right),
       onTap: _showLanguageSheet,
     );
@@ -141,8 +145,8 @@ class _MePageState extends State<MePage> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(Icons.privacy_tip_outlined, color: primaryClr),
-      title: const Text('Quyền riêng tư'),
-      subtitle: const Text('Xem chính sách và điều khoản'),
+      title: Text('privacy'.tr),
+      subtitle: Text('privacy_subtitle'.tr),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => Get.to(() => const PrivacyPolicyPage()),
     );
@@ -152,17 +156,10 @@ class _MePageState extends State<MePage> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(Icons.cloud_upload_outlined, color: primaryClr),
-      title: const Text('Sao lưu Google Drive'),
-      subtitle: const Text('Đồng bộ và lưu trữ dữ liệu'),
+      title: Text('drive_backup'.tr),
+      subtitle: Text('drive_backup_subtitle'.tr),
       trailing: const Icon(Icons.chevron_right),
-      onTap: () {
-        Get.snackbar(
-          'Sao lưu',
-          'Tính năng đang được phát triển.',
-          snackPosition: SnackPosition.BOTTOM,
-          margin: const EdgeInsets.all(16),
-        );
-      },
+      onTap: _showBackupSheet,
     );
   }
 
@@ -180,12 +177,125 @@ class _MePageState extends State<MePage> {
       onTap: () {
         Get.snackbar(
           title,
-          'Chức năng này đang được cập nhật.',
+          'feature_updating'.tr,
           snackPosition: SnackPosition.BOTTOM,
           margin: const EdgeInsets.all(16),
         );
       },
     );
+  }
+
+  void _showBackupSheet() {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        decoration: BoxDecoration(
+          color: context.theme.cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 48,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('drive_sheet_title'.tr, style: titleStyle),
+              const SizedBox(height: 8),
+              Text(
+                'drive_sheet_description'.tr,
+                style: bodyStyle.copyWith(color: Colors.grey[600]),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.cloud_upload_rounded, color: primaryClr),
+                title: Text('backup_now'.tr),
+                subtitle: Text('backup_now_subtitle'.tr),
+                onTap: () {
+                  Get.back();
+                  _runBackup();
+                },
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(Icons.restore_rounded, color: primaryClr),
+                title: Text('restore_from_drive'.tr),
+                subtitle: Text('restore_from_drive_subtitle'.tr),
+                onTap: () {
+                  Get.back();
+                  _runRestore();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Future<void> _runBackup() async {
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+    try {
+      final message = await _backupService.backupToDrive();
+      Get.back();
+      Get.snackbar(
+        'backup_success'.tr,
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    } catch (e) {
+      Get.back();
+      Get.snackbar(
+        'backup_failed'.tr,
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    }
+  }
+
+  Future<void> _runRestore() async {
+    Get.dialog(
+      const Center(child: CircularProgressIndicator()),
+      barrierDismissible: false,
+    );
+    try {
+      final message = await _backupService.restoreLatestBackup();
+      if (Get.isRegistered<TaskController>()) {
+        await Get.find<TaskController>().getTasks();
+      }
+      if (Get.isRegistered<ProjectController>()) {
+        await Get.find<ProjectController>().getProjects();
+      }
+      Get.back();
+      Get.snackbar(
+        'restore_success'.tr,
+        message,
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    } catch (e) {
+      Get.back();
+      Get.snackbar(
+        'restore_failed'.tr,
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+    }
   }
 
   void _showLanguageSheet() {
@@ -211,12 +321,12 @@ class _MePageState extends State<MePage> {
               const SizedBox(height: 16),
               ListTile(
                 leading: const Icon(Icons.flag_outlined),
-                title: const Text('Tiếng Việt'),
+                title: Text('language_vi'.tr),
                 onTap: () => _updateLanguage('vi'),
               ),
               ListTile(
                 leading: const Icon(Icons.flag_outlined),
-                title: const Text('English'),
+                title: Text('language_en'.tr),
                 onTap: () => _updateLanguage('en'),
               ),
               const SizedBox(height: 16),

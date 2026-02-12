@@ -5,6 +5,7 @@ import 'package:task_todo/controllers/project_controller.dart';
 import 'package:task_todo/controllers/task_controller.dart';
 import 'package:task_todo/ui/theme.dart';
 import 'package:task_todo/ui/widgets/button.dart';
+
 import '../../models/task.dart';
 import '../widgets/input_field.dart';
 
@@ -33,9 +34,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
       .toString();
 
   int _selectedRemind = 5;
-  List<int> remindList = [5, 10, 15, 20];
+  final List<int> remindList = [5, 10, 15, 20];
   String _selectedRepeat = 'None';
-  List<String> repeatList = ['None', 'Daily', 'Weekly', 'Monthly'];
+  final List<String> repeatList = ['None', 'Daily', 'Weekly', 'Monthly'];
 
   int _selectedColor = 0;
   String? _selectedProjectOption;
@@ -52,14 +53,14 @@ class _AddTaskPageState extends State<AddTaskPage> {
             .where((project) => project.trim().isNotEmpty),
       );
     });
+
     if (widget.task != null) {
       final task = widget.task!;
       _titleController.text = task.title ?? '';
       _noteController.text = task.note ?? '';
       _projectNameController.text = task.project ?? '';
-      _selectedDate = task.date != null
-          ? DateFormat.yMd().parse(task.date!)
-          : _selectedDate;
+      _selectedDate =
+          task.date != null ? DateFormat.yMd().parse(task.date!) : _selectedDate;
       _startTime = task.startTime ?? _startTime;
       _endTime = task.endTime ?? _endTime;
       _selectedRemind = task.remind ?? _selectedRemind;
@@ -74,217 +75,125 @@ class _AddTaskPageState extends State<AddTaskPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditMode = widget.task != null;
     return Scaffold(
-      // ignore: deprecated_member_use
       backgroundColor: context.theme.colorScheme.background,
-      appBar: _customAppBar(),
-      body: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+      appBar: _customAppBar(isEditMode),
+      body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                widget.task == null ? 'Add Task' : 'Edit Task',
-                style: headingStyle,
+              _headerSection(isEditMode),
+              const SizedBox(height: 16),
+              _sectionCard(
+                child: Column(
+                  children: [
+                    InputField(
+                      title: 'field_title'.tr,
+                      hint: 'field_title_hint'.tr,
+                      controller: _titleController,
+                    ),
+                    InputField(
+                      title: 'field_note'.tr,
+                      hint: 'field_note_hint'.tr,
+                      controller: _noteController,
+                    ),
+                    InputField(
+                      title: 'field_project'.tr,
+                      hint: 'field_project_hint'.tr,
+                      controller: _projectNameController,
+                    ),
+                    _projectDropdown(),
+                  ],
+                ),
               ),
-              InputField(
-                title: 'Title',
-                hint: 'Enter title here',
-                controller: _titleController,
-              ),
-              InputField(
-                title: 'Note',
-                hint: 'Enter note here',
-                controller: _noteController,
-              ),
-              InputField(
-                title: 'Project',
-                hint: 'Enter or choose a project',
-                controller: _projectNameController,
-              ),
-              Obx(() {
-                final projectOptions = _projectController.projectList
-                    .map((project) => project.name)
-                    .toSet()
-                    .toList()
-                  ..sort();
-
-                if (projectOptions.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                final currentSelection =
-                    projectOptions.contains(_selectedProjectOption)
-                        ? _selectedProjectOption
-                        : null;
-
-                return Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: currentSelection,
-                    hint: Text(
-                      'Select existing project',
-                        style: subTitleStyle,
+              const SizedBox(height: 14),
+              _sectionCard(
+                child: Column(
+                  children: [
+                    InputField(
+                      title: 'field_date'.tr,
+                      hint: DateFormat.yMd().format(_selectedDate),
+                      widget: IconButton(
+                        onPressed: _getDateFromUser,
+                        icon: const Icon(Icons.calendar_today_outlined,
+                            color: Colors.grey),
                       ),
-                      isExpanded: true,
-                      items: projectOptions
-                          .map(
-                            (project) => DropdownMenuItem(
-                              value: project,
-                              child: Text(project, style: subTitleStyle),
+                    ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InputField(
+                            title: 'field_start_time'.tr,
+                            hint: _startTime,
+                            widget: IconButton(
+                              onPressed: () =>
+                                  _getTimeFromUser(isStartTime: true),
+                              icon: const Icon(Icons.access_time_rounded,
+                                  color: Colors.grey),
                             ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedProjectOption = value;
-                          if (value != null) {
-                            _projectNameController.text = value;
-                          }
-                        });
-                      },
-                    ),
-                  ),
-                );
-              }),
-              InputField(
-                title: 'Date',
-                hint: DateFormat.yMd().format(_selectedDate),
-                widget: IconButton(
-                  onPressed: () => _getDateFromUser(),
-                  icon: const Icon(
-                    Icons.calendar_today_outlined,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: InputField(
-                      title: 'Start Time',
-                      hint: _startTime,
-                      widget: IconButton(
-                        onPressed: () => _getTimeFromUser(isStartTime: true),
-                        icon: const Icon(
-                          Icons.access_time_rounded,
-                          color: Colors.grey,
+                          ),
                         ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 12,
-                  ),
-                  Expanded(
-                    child: InputField(
-                      title: 'End Time',
-                      hint: _endTime,
-                      widget: IconButton(
-                        onPressed: () => _getTimeFromUser(isStartTime: false),
-                        icon: const Icon(
-                          Icons.access_time_rounded,
-                          color: Colors.grey,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InputField(
+                            title: 'field_end_time'.tr,
+                            hint: _endTime,
+                            widget: IconButton(
+                              onPressed: () =>
+                                  _getTimeFromUser(isStartTime: false),
+                              icon: const Icon(Icons.access_time_rounded,
+                                  color: Colors.grey),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-              InputField(
-                title: 'Remind',
-                hint: '$_selectedRemind minutes early',
-                widget: Row(
-                  children: [
-                    DropdownButton(
-                      dropdownColor: Colors.blueGrey,
-                      borderRadius: BorderRadius.circular(10),
-                      items: remindList
-                          .map<DropdownMenuItem<String>>(
-                              (int value) => DropdownMenuItem(
-                                  value: value.toString(),
-                                  child: Text(
-                                    '$value',
-                                    style: const TextStyle(color: Colors.white),
-                                  )))
-                          .toList(),
-                      icon: const Icon(Icons.keyboard_arrow_down,
-                          color: Colors.grey),
-                      iconSize: 32,
-                      elevation: 4,
-                      underline: Container(
-                        height: 0,
-                      ),
-                      style: subTitleStyle,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedRemind = int.parse(newValue!);
-                        });
+                    const SizedBox(height: 10),
+                    _modernSelector<int>(
+                      label: 'field_remind'.tr,
+                      value: _selectedRemind,
+                      items: remindList,
+                      display: (value) => '$value ${'minutes_short'.tr}',
+                      onChanged: (value) => setState(() => _selectedRemind = value),
+                    ),
+                    const SizedBox(height: 12),
+                    _modernSelector<String>(
+                      label: 'field_repeat'.tr,
+                      value: _selectedRepeat,
+                      items: repeatList,
+                      display: (value) {
+                        switch (value) {
+                          case 'Daily':
+                            return 'repeat_daily'.tr;
+                          case 'Weekly':
+                            return 'repeat_weekly'.tr;
+                          case 'Monthly':
+                            return 'repeat_monthly'.tr;
+                          default:
+                            return 'repeat_none'.tr;
+                        }
                       },
-                    ),
-                    const SizedBox(
-                      width: 6,
+                      onChanged: (value) => setState(() => _selectedRepeat = value),
                     ),
                   ],
                 ),
               ),
-              InputField(
-                title: 'Repeat',
-                hint: _selectedRepeat,
-                widget: Row(
+              const SizedBox(height: 16),
+              _sectionCard(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    DropdownButton(
-                      dropdownColor: Colors.blueGrey,
-                      borderRadius: BorderRadius.circular(10),
-                      items: repeatList
-                          .map<DropdownMenuItem<String>>(
-                              (String value) => DropdownMenuItem(
-                                  value: value,
-                                  child: Text(
-                                    value,
-                                    style: const TextStyle(color: Colors.white),
-                                  )))
-                          .toList(),
-                      icon: const Icon(Icons.keyboard_arrow_down,
-                          color: Colors.grey),
-                      iconSize: 32,
-                      elevation: 4,
-                      underline: Container(
-                        height: 0,
-                      ),
-                      style: subTitleStyle,
-                      onChanged: (String? newValue) {
-                        setState(() {
-                          _selectedRepeat = newValue!;
-                        });
-                      },
-                    ),
-                    const SizedBox(
-                      width: 6,
+                    _colorPalette(),
+                    MyButton(
+                      label: isEditMode ? 'save_task_button'.tr : 'create_task_button'.tr,
+                      onTap: _validateData,
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(
-                height: 18,
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  _colorPalette(),
-                  MyButton(
-                      label: widget.task == null ? 'Create Task' : 'Save Task',
-                      onTap: () {
-                        _validateData();
-                      }),
-                ],
               ),
             ],
           ),
@@ -293,10 +202,136 @@ class _AddTaskPageState extends State<AddTaskPage> {
     );
   }
 
-  AppBar _customAppBar() {
+  Widget _headerSection(bool isEditMode) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [primaryClr.withOpacity(0.9), primaryClr.withOpacity(0.7)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isEditMode ? 'edit_task_title'.tr : 'add_task_title'.tr,
+            style: headingStyle.copyWith(color: Colors.white),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'task_form_header_desc'.tr,
+            style: subTitleStyle.copyWith(color: Colors.white70),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionCard({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: context.theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _projectDropdown() {
+    return Obx(() {
+      final projectOptions = _projectController.projectList
+          .map((project) => project.name)
+          .toSet()
+          .toList()
+        ..sort();
+
+      if (projectOptions.isEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      final currentSelection = projectOptions.contains(_selectedProjectOption)
+          ? _selectedProjectOption
+          : null;
+
+      return Container(
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: currentSelection,
+            hint: Text('field_project_select'.tr, style: subTitleStyle),
+            isExpanded: true,
+            items: projectOptions
+                .map(
+                  (project) => DropdownMenuItem(
+                    value: project,
+                    child: Text(project, style: subTitleStyle),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              setState(() {
+                _selectedProjectOption = value;
+                if (value != null) {
+                  _projectNameController.text = value;
+                }
+              });
+            },
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _modernSelector<T>({
+    required String label,
+    required T value,
+    required List<T> items,
+    required String Function(T) display,
+    required void Function(T) onChanged,
+  }) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 76,
+          child: Text(label, style: titleStyle),
+        ),
+        Expanded(
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: items.map((item) {
+              final selected = item == value;
+              return ChoiceChip(
+                label: Text(display(item)),
+                selected: selected,
+                onSelected: (_) => onChanged(item),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  AppBar _customAppBar(bool isEditMode) {
     return AppBar(
       leading: IconButton(
-        onPressed: () => Get.back(),
+        onPressed: Get.back,
         icon: const Icon(
           Icons.arrow_back_ios,
           size: 24,
@@ -304,29 +339,27 @@ class _AddTaskPageState extends State<AddTaskPage> {
         ),
       ),
       elevation: 0,
-      // ignore: deprecated_member_use
       backgroundColor: context.theme.colorScheme.background,
       centerTitle: true,
-
+      title: Text(isEditMode ? 'edit_task_nav_title'.tr : 'create_task_title'.tr, style: titleStyle),
     );
   }
 
-  _validateData() {
+  void _validateData() {
     if (_titleController.text.isNotEmpty && _noteController.text.isNotEmpty) {
       _saveTask();
-    } else if (_titleController.text.isNotEmpty ||
-        _noteController.text.isNotEmpty) {
-      Get.snackbar('required', 'All fields are required!',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.white,
-          colorText: pinkClr,
-          icon: const Icon(
-            Icons.warning_amber_rounded,
-            color: Colors.red,
-          ));
     } else {
-      print(
-          '############################ SOMETHING WRONG HAPPENED #############################');
+      Get.snackbar(
+        'required'.tr,
+        'all_fields_required'.tr,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.white,
+        colorText: pinkClr,
+        icon: const Icon(
+          Icons.warning_amber_rounded,
+          color: Colors.red,
+        ),
+      );
     }
   }
 
@@ -339,7 +372,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
       }
 
       if (widget.task == null) {
-        final value = await _taskController.addTask(
+        await _taskController.addTask(
           task: Task(
             title: _titleController.text,
             note: _noteController.text,
@@ -354,10 +387,9 @@ class _AddTaskPageState extends State<AddTaskPage> {
             isNote: 0,
           ),
         );
-        print('Value: $value');
       } else {
         final existing = widget.task!;
-        final value = await _taskController.updateTask(
+        await _taskController.updateTask(
           Task(
             id: existing.id,
             title: _titleController.text,
@@ -373,25 +405,23 @@ class _AddTaskPageState extends State<AddTaskPage> {
             isNote: existing.isNote,
           ),
         );
-        print('Updated: $value');
       }
       Get.back(result: true);
     } catch (e) {
-      print('error: $e');
+      Get.snackbar(
+        'error'.tr,
+        e.toString(),
+        snackPosition: SnackPosition.BOTTOM,
+      );
     }
   }
 
-  Column _colorPalette() {
+  Widget _colorPalette() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Color',
-          style: titleStyle,
-        ),
-        const SizedBox(
-          height: 8,
-        ),
+        Text('field_color'.tr, style: titleStyle),
+        const SizedBox(height: 8),
         Wrap(
           children: List<Widget>.generate(
             3,
@@ -402,7 +432,7 @@ class _AddTaskPageState extends State<AddTaskPage> {
                 });
               },
               child: Padding(
-                padding: const EdgeInsets.only(right: 8.0,bottom: 8.0),
+                padding: const EdgeInsets.only(right: 8.0, bottom: 8.0),
                 child: CircleAvatar(
                   backgroundColor: index == 0
                       ? primaryClr
@@ -426,39 +456,38 @@ class _AddTaskPageState extends State<AddTaskPage> {
     );
   }
 
-  _getDateFromUser() async {
-    DateTime? pickedDate = await showDatePicker(
-        context: context,
-        initialDate: _selectedDate,
-        firstDate: DateTime(2015),
-        lastDate: DateTime(2050));
+  Future<void> _getDateFromUser() async {
+    final pickedDate = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2015),
+      lastDate: DateTime(2050),
+    );
 
     if (pickedDate != null) {
       setState(() => _selectedDate = pickedDate);
-    } else {
-      print('Please select correct date');
     }
   }
 
-  _getTimeFromUser({required bool isStartTime}) async {
-    TimeOfDay? pickedTime = await showTimePicker(
+  Future<void> _getTimeFromUser({required bool isStartTime}) async {
+    final pickedTime = await showTimePicker(
       initialEntryMode: TimePickerEntryMode.input,
       context: context,
       initialTime: isStartTime
           ? TimeOfDay.fromDateTime(DateTime.now())
-          : TimeOfDay.fromDateTime(
-              DateTime.now().add(const Duration(minutes: 15))),
+          : TimeOfDay.fromDateTime(DateTime.now().add(const Duration(minutes: 15))),
     );
 
-    // ignore: use_build_context_synchronously
-    String formattedTime = pickedTime!.format(context);
+    if (pickedTime == null) {
+      return;
+    }
+
+    final formattedTime = pickedTime.format(context);
 
     if (isStartTime) {
       setState(() => _startTime = formattedTime);
-    } else if (!isStartTime) {
-      setState(() => _endTime = formattedTime);
     } else {
-      print('Something went wrong !');
+      setState(() => _endTime = formattedTime);
     }
   }
 }

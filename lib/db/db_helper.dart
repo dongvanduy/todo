@@ -199,4 +199,43 @@ class DBHelper {
       whereArgs: [oldName],
     );
   }
+
+  static Future<Map<String, dynamic>> exportData() async {
+    final tasks = await query();
+    final projects = await queryProjects();
+    return {
+      'tasks': tasks,
+      'projects': projects,
+    };
+  }
+
+  static Future<void> restoreData(Map<String, dynamic> payload) async {
+    final rawTasks = payload['tasks'];
+    final rawProjects = payload['projects'];
+
+    if (rawTasks is! List || rawProjects is! List) {
+      throw Exception('Dữ liệu sao lưu không hợp lệ.');
+    }
+
+    await _db!.transaction((txn) async {
+      await txn.delete(_tableName);
+      await txn.delete(_projectsTable);
+
+      for (final item in rawProjects) {
+        if (item is Map<String, dynamic>) {
+          await txn.insert(_projectsTable, item);
+        } else if (item is Map) {
+          await txn.insert(_projectsTable, Map<String, dynamic>.from(item));
+        }
+      }
+
+      for (final item in rawTasks) {
+        if (item is Map<String, dynamic>) {
+          await txn.insert(_tableName, item);
+        } else if (item is Map) {
+          await txn.insert(_tableName, Map<String, dynamic>.from(item));
+        }
+      }
+    });
+  }
 }
